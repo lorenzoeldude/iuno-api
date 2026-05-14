@@ -55,11 +55,57 @@ func GetWord(slug string) (models.DictionaryResponse, error) {
 
 	log.Println("FOUND:", word.Lemma)
 
+	// =====================================================
+	// GENERATED MORPHOLOGY
+	// =====================================================
+
 	forms := morphology.Generate(word)
 
+	// =====================================================
+	// EXAMPLES
+	// =====================================================
+
+	rows, err := db.Pool.Query(context.Background(), `
+		SELECT id, latin
+		FROM examples
+		WHERE lemma_id = $1
+		ORDER BY id ASC
+	`, word.ID)
+
+	if err != nil {
+		log.Println("EXAMPLES ERROR:", err)
+		return models.DictionaryResponse{}, err
+	}
+
+	defer rows.Close()
+
+	var examples []models.Example
+
+	for rows.Next() {
+
+		var ex models.Example
+
+		err := rows.Scan(
+			&ex.ID,
+			&ex.Latin,
+		)
+
+		if err != nil {
+			log.Println("SCAN ERROR:", err)
+			continue
+		}
+
+		examples = append(examples, ex)
+	}
+
+	// =====================================================
+	// RESPONSE
+	// =====================================================
+
 	response := models.DictionaryResponse{
-		Word:  word,
-		Forms: forms,
+		Word:     word,
+		Forms:    forms,
+		Examples: examples,
 	}
 
 	return response, nil
