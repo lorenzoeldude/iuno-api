@@ -3,24 +3,12 @@ package morphology
 import "iuno-api/models"
 
 //
-// NOUN MORPHOLOGY ENGINE
-//
-// This file generates:
-//
-// - singular forms
-// - plural forms
-// - all grammatical cases
-//
-// Supported:
-//
-// - 1st declension
-// - 2nd declension masculine
-// - 2nd declension neuter
+// NOUN MORPHOLOGY ENGINE (FULL SYSTEM)
+// Supports:
+// 1st, 2nd, 3rd, 4th, 5th declensions
 //
 
-func GenerateNoun(
-	word models.Word,
-) []models.Form {
+func GenerateNoun(word models.Word) []models.Form {
 
 	switch word.Declension {
 
@@ -28,40 +16,38 @@ func GenerateNoun(
 		return generateFirstDeclension(word)
 
 	case 2:
-
-		// neuter nouns
 		if word.Gender == "neuter" {
 			return generateSecondDeclensionNeuter(word)
 		}
-
-		// masculine default
 		return generateSecondDeclensionMasculine(word)
+
+	case 3:
+		return generateThirdDeclension(word)
+
+	case 4:
+		return generateFourthDeclension(word)
+
+	case 5:
+		return generateFifthDeclension(word)
 	}
 
 	return []models.Form{}
 }
 
+//
 // =====================================================
 // 1ST DECLENSION
 // =====================================================
 //
-// luna, lunae (f)
-//
-// stem = lun-
-//
 
-func generateFirstDeclension(
-	word models.Word,
-) []models.Form {
+func generateFirstDeclension(word models.Word) []models.Form {
 
 	stem := word.Stem
-
 	if stem == "" {
 		stem = removeEnding(word.Lemma, "a")
 	}
 
 	endings := map[string]map[string]string{
-
 		"singular": {
 			"nominative": "a",
 			"genitive":   "ae",
@@ -70,7 +56,6 @@ func generateFirstDeclension(
 			"ablative":   "a",
 			"vocative":   "a",
 		},
-
 		"plural": {
 			"nominative": "ae",
 			"genitive":   "arum",
@@ -81,34 +66,23 @@ func generateFirstDeclension(
 		},
 	}
 
-	return buildNounForms(
-		word,
-		stem,
-		endings,
-	)
+	return buildNounForms(word, stem, endings)
 }
 
-// =====================================================
-// 2ND DECLENSION MASCULINE
-// =====================================================
 //
-// servus, servi
-//
-// stem = serv-
+// =====================================================
+// 2ND DECLENSION
+// =====================================================
 //
 
-func generateSecondDeclensionMasculine(
-	word models.Word,
-) []models.Form {
+func generateSecondDeclensionMasculine(word models.Word) []models.Form {
 
 	stem := word.Stem
-
 	if stem == "" {
 		stem = removeEnding(word.Lemma, "us")
 	}
 
 	endings := map[string]map[string]string{
-
 		"singular": {
 			"nominative": "us",
 			"genitive":   "i",
@@ -117,7 +91,6 @@ func generateSecondDeclensionMasculine(
 			"ablative":   "o",
 			"vocative":   "e",
 		},
-
 		"plural": {
 			"nominative": "i",
 			"genitive":   "orum",
@@ -128,34 +101,17 @@ func generateSecondDeclensionMasculine(
 		},
 	}
 
-	return buildNounForms(
-		word,
-		stem,
-		endings,
-	)
+	return buildNounForms(word, stem, endings)
 }
 
-// =====================================================
-// 2ND DECLENSION NEUTER
-// =====================================================
-//
-// bellum, belli
-//
-// stem = bell-
-//
-
-func generateSecondDeclensionNeuter(
-	word models.Word,
-) []models.Form {
+func generateSecondDeclensionNeuter(word models.Word) []models.Form {
 
 	stem := word.Stem
-
 	if stem == "" {
 		stem = removeEnding(word.Lemma, "um")
 	}
 
 	endings := map[string]map[string]string{
-
 		"singular": {
 			"nominative": "um",
 			"genitive":   "i",
@@ -164,7 +120,6 @@ func generateSecondDeclensionNeuter(
 			"ablative":   "o",
 			"vocative":   "um",
 		},
-
 		"plural": {
 			"nominative": "a",
 			"genitive":   "orum",
@@ -175,16 +130,119 @@ func generateSecondDeclensionNeuter(
 		},
 	}
 
-	return buildNounForms(
-		word,
-		stem,
-		endings,
-	)
+	return buildNounForms(word, stem, endings)
 }
 
+//
 // =====================================================
-// SHARED NOUN BUILDER
+// 3RD DECLENSION (CORE FIX)
 // =====================================================
+//
+
+func generateThirdDeclension(word models.Word) []models.Form {
+
+	stem := word.Stem
+	if stem == "" {
+		stem = word.Lemma // fallback (you should improve later)
+	}
+
+	endings := map[string]map[string]string{
+		"singular": {
+			"nominative": "",
+			"genitive":   "is",
+			"dative":     "i",
+			"accusative": "em",
+			"ablative":   "e",
+			"vocative":   "",
+		},
+		"plural": {
+			"nominative": "es",
+			"genitive":   "um",
+			"dative":     "ibus",
+			"accusative": "es",
+			"ablative":   "ibus",
+			"vocative":   "es",
+		},
+	}
+
+	return buildNounForms(word, stem, endings)
+}
+
+//
+// =====================================================
+// 4TH DECLENSION
+// =====================================================
+//
+
+func generateFourthDeclension(word models.Word) []models.Form {
+
+	stem := word.Stem
+	if stem == "" {
+		stem = removeEnding(word.Lemma, "us")
+	}
+
+	endings := map[string]map[string]string{
+		"singular": {
+			"nominative": "us",
+			"genitive":   "us",
+			"dative":     "ui",
+			"accusative": "um",
+			"ablative":   "u",
+			"vocative":   "us",
+		},
+		"plural": {
+			"nominative": "us",
+			"genitive":   "uum",
+			"dative":     "ibus",
+			"accusative": "us",
+			"ablative":   "ibus",
+			"vocative":   "us",
+		},
+	}
+
+	return buildNounForms(word, stem, endings)
+}
+
+//
+// =====================================================
+// 5TH DECLENSION
+// =====================================================
+//
+
+func generateFifthDeclension(word models.Word) []models.Form {
+
+	stem := word.Stem
+	if stem == "" {
+		stem = removeEnding(word.Lemma, "es")
+	}
+
+	endings := map[string]map[string]string{
+		"singular": {
+			"nominative": "es",
+			"genitive":   "ei",
+			"dative":     "ei",
+			"accusative": "em",
+			"ablative":   "e",
+			"vocative":   "es",
+		},
+		"plural": {
+			"nominative": "es",
+			"genitive":   "erum",
+			"dative":     "ebus",
+			"accusative": "es",
+			"ablative":   "ebus",
+			"vocative":   "es",
+		},
+	}
+
+	return buildNounForms(word, stem, endings)
+}
+
+//
+// =====================================================
+// SHARED BUILDER
+// =====================================================
+//
 
 func buildNounForms(
 	word models.Word,
@@ -194,11 +252,7 @@ func buildNounForms(
 
 	var forms []models.Form
 
-	numbers := []string{
-		"singular",
-		"plural",
-	}
-
+	numbers := []string{"singular", "plural"}
 	cases := []string{
 		"nominative",
 		"genitive",
@@ -209,39 +263,30 @@ func buildNounForms(
 	}
 
 	for _, number := range numbers {
+		for _, c := range cases {
 
-		for _, grammaticalCase := range cases {
-
-			form := models.Form{
-				Form: stem + endings[number][grammaticalCase],
-
+			forms = append(forms, models.Form{
+				Form: stem + endings[number][c],
 				Part: "noun",
-
-				Case:   grammaticalCase,
+				Case: c,
 				Number: number,
-
 				Gender: word.Gender,
-			}
-
-			forms = append(forms, form)
+			})
 		}
 	}
 
 	return forms
 }
 
+//
 // =====================================================
 // HELPERS
 // =====================================================
+//
 
-func removeEnding(
-	word string,
-	ending string,
-) string {
-
+func removeEnding(word string, ending string) string {
 	if len(word) < len(ending) {
 		return word
 	}
-
 	return word[:len(word)-len(ending)]
 }
