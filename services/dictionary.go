@@ -2,64 +2,65 @@ package services
 
 import (
 	"context"
-	// "log"
+	"log"
 
 	"iuno-api/db"
 	"iuno-api/models"
+	"iuno-api/services/morphology"
 )
 
-func GetWord(slug string) (models.Word, error) {
+func GetWord(slug string) (models.DictionaryResponse, error) {
 
-    var word models.Word
+	var word models.Word
 
-    err := db.Pool.QueryRow(context.Background(), `
-        SELECT id, slug, lemma, type, meaning, definition
-        FROM lemmas
-        WHERE slug = $1
-    `, slug).Scan(
-        &word.ID,
-        &word.Slug,
-        &word.Lemma,
-        &word.Type,
-        &word.Meaning,
-        &word.Definition,
-    )
+	log.Println("LOOKUP:", slug)
 
-    return word, err
-}
+	err := db.Pool.QueryRow(context.Background(), `
+		SELECT
+			id,
+			slug,
+			lemma,
+			type,
+			meaning,
+			definition,
+			gender,
+			declension,
+			conjugation,
+			stem,
+			perfect,
+			supine,
+			is_irregular
+		FROM lemmas
+		WHERE LOWER(slug) = LOWER($1)
+	`, slug).Scan(
+		&word.ID,
+		&word.Slug,
+		&word.Lemma,
+		&word.Type,
+		&word.Meaning,
+		&word.Definition,
+		&word.Gender,
+		&word.Declension,
+		&word.Conjugation,
+		&word.Stem,
+		&word.Perfect,
+		&word.Supine,
+		&word.Irregular,
+	)
 
-func GetForms(lemmaID int) ([]models.Form, error) {
+	if err != nil {
+		log.Println("DB ERROR:", err)
+		return models.DictionaryResponse{}, err
+	}
 
-    rows, err := db.Pool.Query(context.Background(), `
-        SELECT form, part, grammatical_case, number, gender, tense, mood, voice, person
-        FROM forms
-        WHERE lemma_id = $1
-    `, lemmaID)
+	log.Println("FOUND:", word.Lemma)
 
-    if err != nil {
-        return nil, err
-    }
-    defer rows.Close()
+	forms := morphology.Generate(word)
 
-    var result []models.Form
+	response := models.DictionaryResponse{
+		Word:  word,
+		Forms: forms,
+	}
 
-    for rows.Next() {
-        var f models.Form
-
-        rows.Scan(
-            &f.Form,
-            &f.Part,
-            &f.Case,
-            &f.Number,
-            &f.Gender,
-            &f.Tense,
-            &f.Mood,
-            &f.Voice,
-            &f.Person,
-        )
-
-        result = append(result, f)
-    }
-
-    return result, nil
+	return response, nil
 }

@@ -2,39 +2,30 @@ package handlers
 
 import (
 	"encoding/json"
-	// "log"
 	"net/http"
 	"strings"
 
 	"iuno-api/services"
 	"iuno-api/utils"
-	"iuno-api/models"
 )
 
 func WordHandler(w http.ResponseWriter, r *http.Request) {
 
-    utils.EnableCORS(w)
+	utils.EnableCORS(w)
 
-    slug := strings.TrimPrefix(r.URL.Path, "/api/word/")
-    slug = strings.ToLower(slug)
+	slug := strings.TrimPrefix(r.URL.Path, "/api/word/")
+	slug = strings.Trim(slug, "/")
+	slug = strings.TrimSpace(slug)
+	slug = strings.ToLower(slug)
 
-    word, err := services.GetWord(slug)
-    if err != nil {
-        http.Error(w, "Word not found", 404)
-        return
-    }
+	response, err := services.GetWord(slug)
 
-    forms, err := services.GetForms(word.ID)
-    if err != nil {
-        http.Error(w, "Forms not found", 500)
-        return
-    }
+	if err != nil {
+		http.Error(w, "Word not found", 404)
+		return
+	}
 
-    json.NewEncoder(w).Encode(struct {
-        Word  models.Word   `json:"word"`
-        Forms []models.Form `json:"forms"`
-    }{
-        Word:  word,
-        Forms: forms,
-    })
+	w.Header().Set("Content-Type", "application/json")
+
+	json.NewEncoder(w).Encode(response)
 }

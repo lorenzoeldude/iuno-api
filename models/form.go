@@ -1,17 +1,44 @@
 package models
 
 type Form struct {
-    Form     string `json:"form"`
-    Part     string `json:"part"`
 
-    Case     string `json:"case"`
-    Number   string `json:"number"`
+	// =====================================================
+	// SURFACE FORM
+	// =====================================================
 
-    Gender   string `json:"gender"`
+	Form string `json:"form"`
 
-    Tense    string `json:"tense"`
-    Mood     string `json:"mood"`
-    Voice    string `json:"voice"`
+	// =====================================================
+	// PART OF SPEECH
+	// =====================================================
 
-    Person   int    `json:"person"`
+	Part string `json:"part"`
+
+	// =====================================================
+	// NOMINAL FEATURES
+	// =====================================================
+
+	Case string `json:"case"`
+
+	Number string `json:"number"`
+
+	Gender string `json:"gender"`
+
+	// =====================================================
+	// VERBAL FEATURES
+	// =====================================================
+
+	Tense string `json:"tense"`
+
+	Mood string `json:"mood"`
+
+	Voice string `json:"voice"`
+
+	Person int `json:"person"`
+
+	// =====================================================
+	// NON-FINITE FEATURES
+	// =====================================================
+
+	NonFinite string `json:"non_finite"`
 }
