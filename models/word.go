@@ -10,8 +10,6 @@ type Word struct {
 
 	Type string `json:"type"`
 
-	Meaning string `json:"meaning"`
-
 	Definition string `json:"definition"`
 
 	// =====================================================
