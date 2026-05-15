@@ -8,6 +8,8 @@ type Word struct {
 
 	Lemma string `json:"lemma"`
 
+	LemmaDisplay  string `json:"lemma_display"`
+
 	Type string `json:"type"`
 
 	Definition string `json:"definition"`
