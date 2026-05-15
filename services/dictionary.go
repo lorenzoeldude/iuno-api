@@ -98,6 +98,45 @@ func GetWord(slug string) (models.DictionaryResponse, error) {
 		examples = append(examples, ex)
 	}
 
+
+		// =====================================================
+	// MEANINGS
+	// =====================================================
+
+	rows, err = db.Pool.Query(context.Background(), `
+		SELECT id, meaning
+		FROM meanings
+		WHERE lemma_id = $1
+		ORDER BY sort_order ASC
+	`, word.ID)
+
+	if err != nil {
+		return models.DictionaryResponse{}, err
+	}
+
+	defer rows.Close()
+
+	var meanings []models.Meaning
+
+	for rows.Next() {
+
+		var m models.Meaning
+
+		err := rows.Scan(
+			&m.ID,
+			&m.English,
+		)
+
+		if err != nil {
+			log.Println("SCAN ERROR:", err)
+			continue
+		}
+
+		meanings = append(meanings, m)
+	}
+
+
+
 	// =====================================================
 	// RESPONSE
 	// =====================================================
@@ -106,6 +145,7 @@ func GetWord(slug string) (models.DictionaryResponse, error) {
 		Word:     word,
 		Forms:    forms,
 		Examples: examples,
+		Meanings: meanings,
 	}
 
 	return response, nil
