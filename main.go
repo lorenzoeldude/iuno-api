@@ -26,7 +26,7 @@ func main() {
 	http.HandleFunc("/api/search", handlers.SearchHandler)
 
 	// trainer
-	http.HandleFunc("/api/trainer/random", handlers.TrainerHandler)
+	http.HandleFunc("/api/trainer/random", handlers.RandomTrainerHandler)
 
 	// morphology / popup parser
 	http.HandleFunc("/api/parse", handlers.ParseHandler)
