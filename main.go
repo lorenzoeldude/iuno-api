@@ -10,33 +10,65 @@ import (
 
 func main() {
 
-	// --------------------
+	// =====================================================
 	// INIT DATABASE
-	// --------------------
+	// =====================================================
 	db.Init("postgres://lorenz@localhost:5432/iuno?sslmode=disable")
 
-	// --------------------
-	// ROUTES
-	// --------------------
-
-	// dictionary
+	// =====================================================
+	// DICTIONARY
+	// =====================================================
 	http.HandleFunc("/api/word/", handlers.WordHandler)
 
-	// search
+	// =====================================================
+	// SEARCH
+	// =====================================================
 	http.HandleFunc("/api/search", handlers.SearchHandler)
 
-	// trainer
+	// =====================================================
+	// TRAINER
+	// =====================================================
 	http.HandleFunc("/api/trainer/random", handlers.RandomTrainerHandler)
 
-	// morphology / popup parser
+	// =====================================================
+	// MORPHOLOGY / PARSER
+	// =====================================================
 	http.HandleFunc("/api/parse", handlers.ParseHandler)
 
-	//admin adds lemma and meaning (upsert = update or insert)
+	// =====================================================
+	// ADMIN
+	// =====================================================
 	http.HandleFunc("/api/admin/lemma", handlers.UpsertLemmaHandler)
 
-	// --------------------
+	// =====================================================
+	// AUTH
+	// =====================================================
+	http.HandleFunc("/api/auth/register", handlers.RegisterHandler)
+	http.HandleFunc("/api/auth/login", handlers.LoginHandler)
+
+	// =====================================================
+	// WORD LISTS
+	// =====================================================
+	http.HandleFunc("/api/word-lists", handlers.GetWordListsHandler)
+
+	http.HandleFunc(
+		"/api/word-lists/create",
+		handlers.CreateWordListHandler,
+	)
+
+	http.HandleFunc(
+		"/api/word-lists/add-lemma",
+		handlers.AddLemmaToListHandler,
+	)
+
+	http.HandleFunc(
+		"/api/word-lists/lemmas",
+		handlers.GetWordListLemmasHandler,
+	)
+
+	// =====================================================
 	// START SERVER
-	// --------------------
+	// =====================================================
 	log.Println("Server running on http://localhost:8080")
 
 	log.Fatal(
