@@ -25,6 +25,7 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 
 	rand.Seed(time.Now().UnixNano())
 
+	var lemmaID int
 	var lemma string
 	var correct string
 
@@ -33,6 +34,7 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	err := db.Pool.QueryRow(context.Background(), `
 		SELECT
+			l.id,
 			l.lemma,
 			m.meaning
 		FROM lemmas l
@@ -40,7 +42,7 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 			ON m.lemma_id = l.id
 		ORDER BY RANDOM()
 		LIMIT 1
-	`).Scan(&lemma, &correct)
+	`).Scan(&lemmaID, &lemma, &correct)
 
 	if err != nil {
 
@@ -55,14 +57,15 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 
 	// =====================================================
 	// RANDOM WRONG ANSWERS
+	// exclude ALL meanings from the same lemma
 	// =====================================================
 	rows, err := db.Pool.Query(context.Background(), `
 		SELECT meaning
 		FROM meanings
-		WHERE meaning != $1
+		WHERE lemma_id != $1
 		ORDER BY RANDOM()
-		LIMIT 2
-	`, correct)
+		LIMIT 10
+	`, lemmaID)
 
 	if err != nil {
 
@@ -79,6 +82,10 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 
 	answers := []string{correct}
 
+	used := map[string]bool{
+		correct: true,
+	}
+
 	for rows.Next() {
 
 		var wrong string
@@ -88,7 +95,17 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
+		// avoid duplicates
+		if used[wrong] {
+			continue
+		}
+
+		used[wrong] = true
 		answers = append(answers, wrong)
+
+		if len(answers) == 3 {
+			break
+		}
 	}
 
 	// =====================================================
@@ -98,7 +115,7 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 
 		http.Error(
 			w,
-			"not enough meanings in database",
+			"not enough unique meanings in database",
 			http.StatusInternalServerError,
 		)
 
