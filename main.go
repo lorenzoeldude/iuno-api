@@ -31,6 +31,9 @@ func main() {
 	// morphology / popup parser
 	http.HandleFunc("/api/parse", handlers.ParseHandler)
 
+	//admin adds lemma and meaning (upsert = update or insert)
+	http.HandleFunc("/api/admin/lemma", handlers.UpsertLemmaHandler)
+
 	// --------------------
 	// START SERVER
 	// --------------------
