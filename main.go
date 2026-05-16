@@ -92,8 +92,10 @@ func main() {
 	// add lemma to list
 	http.HandleFunc(
 		"/api/word-lists/add-lemma",
-		middleware.AuthMiddleware(
-			handlers.AddLemmaToListHandler,
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				handlers.AddLemmaToUserListHandler,
+			),
 		),
 	)
 
