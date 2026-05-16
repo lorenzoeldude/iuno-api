@@ -3,16 +3,18 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
-	"strings"
 
 	"iuno-api/db"
+	"iuno-api/middleware"
 	"iuno-api/models"
 	"iuno-api/utils"
 )
 
-func CreateWordListHandler(w http.ResponseWriter, r *http.Request) {
+func CreateWordListHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 
 	utils.EnableCORS(w)
 
@@ -20,6 +22,7 @@ func CreateWordListHandler(w http.ResponseWriter, r *http.Request) {
 	// CORS PRE-FLIGHT
 	// =====================================================
 	if r.Method == http.MethodOptions {
+
 		w.WriteHeader(http.StatusOK)
 		return
 	}
@@ -28,19 +31,33 @@ func CreateWordListHandler(w http.ResponseWriter, r *http.Request) {
 	// METHOD CHECK
 	// =====================================================
 	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+
+		http.Error(
+			w,
+			"method not allowed",
+			http.StatusMethodNotAllowed,
+		)
+
 		return
 	}
 
 	// =====================================================
+	// AUTH USER
+	// =====================================================
+	claims := r.Context().Value(
+		middleware.UserContextKey,
+	).(*utils.Claims)
+
+	userID := claims.UserID
+
+	// =====================================================
 	// PARSE REQUEST
 	// =====================================================
-	var body models.CreateWordListRequest
+	var req models.CreateWordListRequest
 
-	err := json.NewDecoder(r.Body).Decode(&body)
+	err := json.NewDecoder(r.Body).Decode(&req)
+
 	if err != nil {
-
-		log.Println("JSON ERROR:", err)
 
 		http.Error(
 			w,
@@ -51,27 +68,16 @@ func CreateWordListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// =====================================================
-	// VALIDATION
-	// =====================================================
-	body.Name = strings.TrimSpace(body.Name)
-
-	if body.Name == "" {
+	if req.Name == "" {
 
 		http.Error(
 			w,
-			"list name is required",
+			"name is required",
 			http.StatusBadRequest,
 		)
 
 		return
 	}
-
-	// =====================================================
-	// TEMP USER ID
-	// later comes from auth middleware
-	// =====================================================
-	userID := 1
 
 	// =====================================================
 	// INSERT WORD LIST
@@ -87,16 +93,14 @@ func CreateWordListHandler(w http.ResponseWriter, r *http.Request) {
 		RETURNING id
 	`,
 		userID,
-		body.Name,
+		req.Name,
 	).Scan(&listID)
 
 	if err != nil {
 
-		log.Println("CREATE LIST ERROR:", err)
-
 		http.Error(
 			w,
-			"failed to create list",
+			"failed to create word list",
 			http.StatusInternalServerError,
 		)
 
@@ -111,6 +115,5 @@ func CreateWordListHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status": "ok",
 		"id":     listID,
-		"name":   body.Name,
 	})
 }

@@ -3,9 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
-	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -30,19 +28,24 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// METHOD CHECK
 	// =====================================================
 	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+
+		http.Error(
+			w,
+			"method not allowed",
+			http.StatusMethodNotAllowed,
+		)
+
 		return
 	}
 
 	// =====================================================
 	// PARSE REQUEST
 	// =====================================================
-	var body models.LoginRequest
+	var req models.LoginRequest
 
-	err := json.NewDecoder(r.Body).Decode(&body)
+	err := json.NewDecoder(r.Body).Decode(&req)
+
 	if err != nil {
-
-		log.Println("JSON ERROR:", err)
 
 		http.Error(
 			w,
@@ -54,56 +57,36 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// =====================================================
-	// NORMALIZE INPUT
+	// FIND USER
 	// =====================================================
-	body.Email = strings.TrimSpace(strings.ToLower(body.Email))
-
-	// =====================================================
-	// VALIDATION
-	// =====================================================
-	if body.Email == "" || body.Password == "" {
-
-		http.Error(
-			w,
-			"email and password required",
-			http.StatusBadRequest,
-		)
-
-		return
-	}
-
-	// =====================================================
-	// FETCH USER
-	// =====================================================
-	var userID int
-	var username string
-	var passwordHash string
-	var isPremium bool
+	var user models.User
 
 	err = db.Pool.QueryRow(context.Background(), `
 		SELECT
 			id,
+			email,
 			username,
 			password_hash,
-			is_premium
+			is_premium,
+			created_at
 		FROM users
 		WHERE email = $1
 	`,
-		body.Email,
+		req.Email,
 	).Scan(
-		&userID,
-		&username,
-		&passwordHash,
-		&isPremium,
+		&user.ID,
+		&user.Email,
+		&user.Username,
+		&user.PasswordHash,
+		&user.IsPremium,
+		&user.CreatedAt,
 	)
 
 	if err != nil {
 
-		log.Println("LOGIN QUERY ERROR:", err)
-
 		http.Error(
 			w,
-			"invalid credentials",
+			"invalid email or password",
 			http.StatusUnauthorized,
 		)
 
@@ -111,19 +94,39 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// =====================================================
-	// VERIFY PASSWORD
+	// CHECK PASSWORD
 	// =====================================================
 	err = bcrypt.CompareHashAndPassword(
-		[]byte(passwordHash),
-		[]byte(body.Password),
+		[]byte(user.PasswordHash),
+		[]byte(req.Password),
 	)
 
 	if err != nil {
 
 		http.Error(
 			w,
-			"invalid credentials",
+			"invalid email or password",
 			http.StatusUnauthorized,
+		)
+
+		return
+	}
+
+	// =====================================================
+	// GENERATE JWT
+	// =====================================================
+	jwtToken, err := utils.GenerateJWT(
+		user.ID,
+		user.Username,
+		user.IsPremium,
+	)
+
+	if err != nil {
+
+		http.Error(
+			w,
+			"failed to generate token",
+			http.StatusInternalServerError,
 		)
 
 		return
@@ -135,9 +138,14 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":      "ok",
-		"user_id":     userID,
-		"username":    username,
-		"is_premium":  isPremium,
+		"status": "ok",
+		"token":  jwtToken,
+
+		"user": map[string]interface{}{
+			"id":         user.ID,
+			"email":      user.Email,
+			"username":   user.Username,
+			"is_premium": user.IsPremium,
+		},
 	})
 }

@@ -129,6 +129,33 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// =====================================================
+	// CREATE DEFAULT WORD LIST
+	// =====================================================
+	_, err = db.Pool.Exec(context.Background(), `
+		INSERT INTO word_lists (
+			user_id,
+			name
+		)
+		VALUES ($1, $2)
+	`,
+		userID,
+		"My Vocabulary",
+	)
+
+	if err != nil {
+
+		log.Println("WORDLIST CREATE ERROR:", err)
+
+		http.Error(
+			w,
+			"failed to create default word list",
+			http.StatusInternalServerError,
+		)
+
+		return
+	}
+
+	// =====================================================
 	// RESPONSE
 	// =====================================================
 	w.Header().Set("Content-Type", "application/json")

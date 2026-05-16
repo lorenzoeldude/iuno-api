@@ -6,6 +6,7 @@ import (
 
 	"iuno-api/db"
 	"iuno-api/handlers"
+	"iuno-api/middleware"
 )
 
 func main() {
@@ -18,52 +19,90 @@ func main() {
 	// =====================================================
 	// DICTIONARY
 	// =====================================================
-	http.HandleFunc("/api/word/", handlers.WordHandler)
+	http.HandleFunc(
+		"/api/word/",
+		handlers.WordHandler,
+	)
 
 	// =====================================================
 	// SEARCH
 	// =====================================================
-	http.HandleFunc("/api/search", handlers.SearchHandler)
+	http.HandleFunc(
+		"/api/search",
+		handlers.SearchHandler,
+	)
 
 	// =====================================================
 	// TRAINER
 	// =====================================================
-	http.HandleFunc("/api/trainer/random", handlers.RandomTrainerHandler)
+	http.HandleFunc(
+		"/api/trainer/random",
+		handlers.RandomTrainerHandler,
+	)
 
 	// =====================================================
 	// MORPHOLOGY / PARSER
 	// =====================================================
-	http.HandleFunc("/api/parse", handlers.ParseHandler)
+	http.HandleFunc(
+		"/api/parse",
+		handlers.ParseHandler,
+	)
 
 	// =====================================================
 	// ADMIN
 	// =====================================================
-	http.HandleFunc("/api/admin/lemma", handlers.UpsertLemmaHandler)
+	http.HandleFunc(
+		"/api/admin/lemma",
+		handlers.UpsertLemmaHandler,
+	)
 
 	// =====================================================
 	// AUTH
 	// =====================================================
-	http.HandleFunc("/api/auth/register", handlers.RegisterHandler)
-	http.HandleFunc("/api/auth/login", handlers.LoginHandler)
+	http.HandleFunc(
+		"/api/auth/register",
+		handlers.RegisterHandler,
+	)
+
+	http.HandleFunc(
+		"/api/auth/login",
+		handlers.LoginHandler,
+	)
 
 	// =====================================================
 	// WORD LISTS
 	// =====================================================
-	http.HandleFunc("/api/word-lists", handlers.GetWordListsHandler)
 
+	// get user word lists
+	http.HandleFunc(
+		"/api/word-lists",
+		middleware.AuthMiddleware(
+			handlers.GetWordListsHandler,
+		),
+	)
+
+	// create word list
 	http.HandleFunc(
 		"/api/word-lists/create",
-		handlers.CreateWordListHandler,
+		middleware.AuthMiddleware(
+			handlers.CreateWordListHandler,
+		),
 	)
 
+	// add lemma to list
 	http.HandleFunc(
 		"/api/word-lists/add-lemma",
-		handlers.AddLemmaToListHandler,
+		middleware.AuthMiddleware(
+			handlers.AddLemmaToListHandler,
+		),
 	)
 
+	// get lemmas inside a list
 	http.HandleFunc(
 		"/api/word-lists/lemmas",
-		handlers.GetWordListLemmasHandler,
+		middleware.AuthMiddleware(
+			handlers.GetWordListLemmasHandler,
+		),
 	)
 
 	// =====================================================

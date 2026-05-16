@@ -3,15 +3,18 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"iuno-api/db"
+	"iuno-api/middleware"
 	"iuno-api/models"
 	"iuno-api/utils"
 )
 
-func AddLemmaToListHandler(w http.ResponseWriter, r *http.Request) {
+func AddLemmaToListHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 
 	utils.EnableCORS(w)
 
@@ -27,19 +30,35 @@ func AddLemmaToListHandler(w http.ResponseWriter, r *http.Request) {
 	// METHOD CHECK
 	// =====================================================
 	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+
+		http.Error(
+			w,
+			"method not allowed",
+			http.StatusMethodNotAllowed,
+		)
+
 		return
 	}
 
 	// =====================================================
+	// AUTH USER
+	// =====================================================
+	claims := r.Context().Value(
+		middleware.UserContextKey,
+	).(*utils.Claims)
+
+	userID := claims.UserID
+
+	_ = userID // (kept for future ownership validation if needed)
+
+	// =====================================================
 	// PARSE REQUEST
 	// =====================================================
-	var body models.AddLemmaToListRequest
+	var req models.AddLemmaToListRequest
 
-	err := json.NewDecoder(r.Body).Decode(&body)
+	err := json.NewDecoder(r.Body).Decode(&req)
+
 	if err != nil {
-
-		log.Println("JSON ERROR:", err)
 
 		http.Error(
 			w,
@@ -50,14 +69,11 @@ func AddLemmaToListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// =====================================================
-	// VALIDATION
-	// =====================================================
-	if body.ListID == 0 || body.LemmaID == 0 {
+	if req.ListID == 0 || req.LemmaID == 0 {
 
 		http.Error(
 			w,
-			"list_id and lemma_id are required",
+			"list_id and lemma_id required",
 			http.StatusBadRequest,
 		)
 
@@ -73,16 +89,13 @@ func AddLemmaToListHandler(w http.ResponseWriter, r *http.Request) {
 			lemma_id
 		)
 		VALUES ($1, $2)
-		ON CONFLICT (list_id, lemma_id)
-		DO NOTHING
+		ON CONFLICT DO NOTHING
 	`,
-		body.ListID,
-		body.LemmaID,
+		req.ListID,
+		req.LemmaID,
 	)
 
 	if err != nil {
-
-		log.Println("ADD LEMMA ERROR:", err)
 
 		http.Error(
 			w,
@@ -99,8 +112,6 @@ func AddLemmaToListHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":   "ok",
-		"list_id":  body.ListID,
-		"lemma_id": body.LemmaID,
+		"status": "ok",
 	})
 }
