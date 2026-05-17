@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"iuno-api/db"
 	"iuno-api/middleware"
 	"iuno-api/utils"
 
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -90,6 +92,7 @@ func UpdateSettingsHandler(w http.ResponseWriter, r *http.Request) {
 		)
 
 		if err != nil {
+
 			log.Println("HASH ERROR:", err)
 
 			http.Error(
@@ -152,11 +155,50 @@ func UpdateSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// =====================================================
+	// CREATE NEW TOKEN
+	// =====================================================
+	newClaims := utils.Claims{
+		UserID:    userID,
+		Username:  req.Username,
+		IsPremium: claims.IsPremium,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(
+				time.Now().Add(7 * 24 * time.Hour),
+			),
+		},
+	}
+
+	token := jwt.NewWithClaims(
+		jwt.SigningMethodHS256,
+		newClaims,
+	)
+
+	tokenString, err := token.SignedString(utils.JwtSecret)
+
+	if err != nil {
+
+		log.Println("TOKEN SIGN ERROR:", err)
+
+		http.Error(
+			w,
+			"failed to create token",
+			http.StatusInternalServerError,
+		)
+
+		return
+	}
+
+	// =====================================================
 	// RESPONSE
 	// =====================================================
 	w.Header().Set("Content-Type", "application/json")
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": "ok",
+		"token": tokenString,
+		"user": map[string]interface{}{
+			"id":       userID,
+			"username": req.Username,
+			"email":    req.Email,
+		},
 	})
 }
