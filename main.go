@@ -16,58 +16,40 @@ func main() {
 	// =====================================================
 	db.Init("postgres://lorenz@localhost:5432/iuno?sslmode=disable")
 
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("GLOBAL HIT:", r.URL.Path)
+	})
+
 	// =====================================================
 	// DICTIONARY
 	// =====================================================
-	http.HandleFunc(
-		"/api/word/",
-		handlers.WordHandler,
-	)
+	http.HandleFunc("/api/word/", handlers.WordHandler)
 
 	// =====================================================
 	// SEARCH
 	// =====================================================
-	http.HandleFunc(
-		"/api/search",
-		handlers.SearchHandler,
-	)
+	http.HandleFunc("/api/search", handlers.SearchHandler)
 
 	// =====================================================
 	// TRAINER
 	// =====================================================
-	http.HandleFunc(
-		"/api/trainer/random",
-		handlers.RandomTrainerHandler,
-	)
+	http.HandleFunc("/api/trainer/random", handlers.RandomTrainerHandler)
 
 	// =====================================================
 	// MORPHOLOGY / PARSER
 	// =====================================================
-	http.HandleFunc(
-		"/api/parse",
-		handlers.ParseHandler,
-	)
+	http.HandleFunc("/api/parse", handlers.ParseHandler)
 
 	// =====================================================
 	// ADMIN
 	// =====================================================
-	http.HandleFunc(
-		"/api/admin/lemma",
-		handlers.UpsertLemmaHandler,
-	)
+	http.HandleFunc("/api/admin/lemma", handlers.UpsertLemmaHandler)
 
 	// =====================================================
 	// AUTH
 	// =====================================================
-	http.HandleFunc(
-		"/api/auth/register",
-		handlers.RegisterHandler,
-	)
-
-	http.HandleFunc(
-		"/api/auth/login",
-		handlers.LoginHandler,
-	)
+	http.HandleFunc("/api/auth/register", handlers.RegisterHandler)
+	http.HandleFunc("/api/auth/login", handlers.LoginHandler)
 
 	// =====================================================
 	// WORD LISTS
@@ -76,34 +58,51 @@ func main() {
 	// get user word lists
 	http.HandleFunc(
 		"/api/word-lists",
-		middleware.AuthMiddleware(
-			handlers.GetWordListsHandler,
-		),
+		middleware.AuthMiddleware(handlers.GetWordListsHandler),
 	)
 
 	// create word list
 	http.HandleFunc(
 		"/api/word-lists/create",
-		middleware.AuthMiddleware(
-			handlers.CreateWordListHandler,
-		),
+		middleware.AuthMiddleware(handlers.CreateWordListHandler),
 	)
 
 	// add lemma to list
 	http.HandleFunc(
 		"/api/word-lists/add-lemma",
 		middleware.CORSMiddleware(
-			middleware.AuthMiddleware(
-				handlers.AddLemmaToUserListHandler,
-			),
+			middleware.AuthMiddleware(handlers.AddLemmaToUserListHandler),
 		),
 	)
 
 	// get lemmas inside a list
 	http.HandleFunc(
 		"/api/word-lists/lemmas",
-		middleware.AuthMiddleware(
-			handlers.GetWordListLemmasHandler,
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(handlers.GetWordListLemmasHandler),
+		),
+	)
+
+	// =====================================================
+	// LEMMA CHECK + DELETE (same route, different methods)
+	// /api/word-lists/lemma/:id
+	// =====================================================
+	http.HandleFunc(
+		"/api/word-lists/lemma/",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+
+				switch r.Method {
+				case http.MethodGet:
+					handlers.CheckLemmaSavedHandler(w, r)
+
+				case http.MethodDelete:
+					handlers.DeleteLemmaFromUserListHandler(w, r)
+
+				default:
+					http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				}
+			}),
 		),
 	)
 
@@ -112,7 +111,5 @@ func main() {
 	// =====================================================
 	log.Println("Server running on http://localhost:8080")
 
-	log.Fatal(
-		http.ListenAndServe(":8080", nil),
-	)
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }

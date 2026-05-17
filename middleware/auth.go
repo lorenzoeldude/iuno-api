@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strings"
+	"log"
 
 	"github.com/golang-jwt/jwt/v5"
 
@@ -38,9 +39,15 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		)
 
 		if err != nil || !token.Valid {
+			log.Println("TOKEN ERROR:", err)
 			http.Error(w, "invalid token", http.StatusUnauthorized)
 			return
 		}
+
+		log.Println("AUTH SUCCESS - USER ID:", claims.UserID)
+		log.Println("TOKEN:", tokenString)
+		log.Println("TOKEN VALID:", token.Valid)
+		log.Printf("CLAIMS: %+v\n", claims)
 
 		ctx := context.WithValue(
 			r.Context(),

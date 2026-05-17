@@ -4,39 +4,56 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"strconv"
 
 	"iuno-api/db"
+	"iuno-api/middleware"
 	"iuno-api/models"
 	"iuno-api/utils"
 )
 
 func GetWordListLemmasHandler(w http.ResponseWriter, r *http.Request) {
 
+	log.Println("HANDLER HIT")
+
 	utils.EnableCORS(w)
 
-	// =====================================================
-	// METHOD CHECK
-	// =====================================================
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	// =====================================================
-	// PARSE LIST ID
+	// AUTH USER
 	// =====================================================
-	listIDParam := r.URL.Query().Get("list_id")
+	claimsRaw := r.Context().Value(middleware.UserContextKey)
+	if claimsRaw == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 
-	listID, err := strconv.Atoi(listIDParam)
-	if err != nil || listID <= 0 {
+	claims, ok := claimsRaw.(*utils.Claims)
+	if !ok || claims == nil {
+		http.Error(w, "invalid auth context", http.StatusUnauthorized)
+		return
+	}
 
-		http.Error(
-			w,
-			"invalid list_id",
-			http.StatusBadRequest,
-		)
+	userID := claims.UserID
 
+	// =====================================================
+	// GET USER LIST (SINGLE LIST DESIGN)
+	// =====================================================
+	var listID int
+
+	err := db.Pool.QueryRow(r.Context(), `
+		SELECT id
+		FROM word_lists
+		WHERE user_id = $1
+		LIMIT 1
+	`, userID).Scan(&listID)
+
+	if err != nil {
+		log.Println("LIST NOT FOUND:", err)
+		http.Error(w, "word list not found", http.StatusBadRequest)
 		return
 	}
 
@@ -59,34 +76,21 @@ func GetWordListLemmasHandler(w http.ResponseWriter, r *http.Request) {
 			l.supine,
 			l.is_irregular
 		FROM word_list_lemmas wll
-		JOIN lemmas l
-			ON l.id = wll.lemma_id
+		JOIN lemmas l ON l.id = wll.lemma_id
 		WHERE wll.list_id = $1
 		ORDER BY l.lemma
 	`, listID)
 
 	if err != nil {
-
 		log.Println("GET LIST LEMMAS ERROR:", err)
-
-		http.Error(
-			w,
-			"database error",
-			http.StatusInternalServerError,
-		)
-
+		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-
 	defer rows.Close()
 
-	// =====================================================
-	// BUILD RESPONSE
-	// =====================================================
 	lemmas := []models.Word{}
 
 	for rows.Next() {
-
 		var word models.Word
 
 		err := rows.Scan(
@@ -112,10 +116,6 @@ func GetWordListLemmasHandler(w http.ResponseWriter, r *http.Request) {
 		lemmas = append(lemmas, word)
 	}
 
-	// =====================================================
-	// RESPONSE
-	// =====================================================
 	w.Header().Set("Content-Type", "application/json")
-
 	json.NewEncoder(w).Encode(lemmas)
 }

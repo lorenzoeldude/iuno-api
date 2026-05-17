@@ -4,37 +4,32 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 
 	"iuno-api/db"
 	"iuno-api/middleware"
-	"iuno-api/models"
 	"iuno-api/utils"
 )
 
-func AddLemmaToUserListHandler(w http.ResponseWriter, r *http.Request) {
-
-	log.Println("hello there")
+func DeleteLemmaFromUserListHandler(w http.ResponseWriter, r *http.Request) {
 
 	utils.EnableCORS(w)
 
 	// =====================================================
-	// CORS PRE-FLIGHT
+	// METHOD CHECK
 	// =====================================================
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 
-	// =====================================================
-	// METHOD CHECK
-	// =====================================================
-	if r.Method != http.MethodPost {
+	if r.Method != http.MethodDelete {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	// =====================================================
-	// AUTH USER
+	// AUTH
 	// =====================================================
 	claimsRaw := r.Context().Value(middleware.UserContextKey)
 	if claimsRaw == nil {
@@ -49,32 +44,26 @@ func AddLemmaToUserListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userID := claims.UserID
-	log.Println("ADD LEMMA REQUEST - USER:", userID)
 
 	// =====================================================
-	// PARSE REQUEST
+	// GET lemma id from URL
+	// /api/word-lists/lemma/:id
 	// =====================================================
-	var req models.AddLemmaToListRequest
+	lemmaIDStr := r.URL.Path[len("/api/word-lists/lemma/"):]
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Println("JSON ERROR:", err)
-		http.Error(w, "invalid json", http.StatusBadRequest)
+	lemmaID, err := strconv.Atoi(lemmaIDStr)
+	if err != nil || lemmaID <= 0 {
+		http.Error(w, "invalid lemma id", http.StatusBadRequest)
 		return
 	}
 
-	if req.LemmaID == 0 {
-		http.Error(w, "lemma_id required", http.StatusBadRequest)
-		return
-	}
-
-	log.Println("LEMMA ID:", req.LemmaID)
+	log.Println("DELETE LEMMA:", lemmaID, "USER:", userID)
 
 	// =====================================================
-	// GET USER DEFAULT WORD LIST
+	// GET USER LIST
 	// =====================================================
 	var listID int
-
-	err := db.Pool.QueryRow(r.Context(), `
+	err = db.Pool.QueryRow(r.Context(), `
 		SELECT id
 		FROM word_lists
 		WHERE user_id = $1
@@ -82,33 +71,26 @@ func AddLemmaToUserListHandler(w http.ResponseWriter, r *http.Request) {
 	`, userID).Scan(&listID)
 
 	if err != nil {
-		log.Println("WORD LIST NOT FOUND:", err)
+		log.Println("LIST NOT FOUND:", err)
 		http.Error(w, "word list not found", http.StatusBadRequest)
 		return
 	}
 
-	log.Println("LIST ID:", listID)
-
 	// =====================================================
-	// INSERT LEMMA (SAFE)
+	// DELETE LEMMA
 	// =====================================================
 	res, err := db.Pool.Exec(r.Context(), `
-		INSERT INTO word_list_lemmas (
-			list_id,
-			lemma_id
-		)
-		VALUES ($1, $2)
-		ON CONFLICT DO NOTHING
-	`, listID, req.LemmaID)
+		DELETE FROM word_list_lemmas
+		WHERE list_id = $1 AND lemma_id = $2
+	`, listID, lemmaID)
 
 	if err != nil {
-		log.Println("DB INSERT ERROR:", err)
-		http.Error(w, "failed to add lemma", http.StatusInternalServerError)
+		log.Println("DELETE ERROR:", err)
+		http.Error(w, "failed to delete lemma", http.StatusInternalServerError)
 		return
 	}
 
 	rows := res.RowsAffected()
-	log.Println("ROWS AFFECTED:", rows)
 
 	// =====================================================
 	// RESPONSE
@@ -117,6 +99,6 @@ func AddLemmaToUserListHandler(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status": "ok",
-		"added":  rows > 0,
+		"removed": rows > 0,
 	})
 }
