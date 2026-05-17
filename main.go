@@ -35,6 +35,15 @@ func main() {
 	// =====================================================
 	http.HandleFunc("/api/trainer/random", handlers.RandomTrainerHandler)
 
+	http.HandleFunc(
+		"/api/trainer/list/random",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(handlers.ListTrainerHandler),
+		),
+	)
+
+	// http.HandleFunc("/api/trainer/list/random", handlers.ListTrainerHandler)
+
 	// =====================================================
 	// MORPHOLOGY / PARSER
 	// =====================================================

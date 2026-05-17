@@ -44,10 +44,10 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		log.Println("AUTH SUCCESS - USER ID:", claims.UserID)
-		log.Println("TOKEN:", tokenString)
-		log.Println("TOKEN VALID:", token.Valid)
-		log.Printf("CLAIMS: %+v\n", claims)
+		// log.Println("AUTH SUCCESS - USER ID:", claims.UserID)
+		// log.Println("TOKEN:", tokenString)
+		// log.Println("TOKEN VALID:", token.Valid)
+		// log.Printf("CLAIMS: %+v\n", claims)
 
 		ctx := context.WithValue(
 			r.Context(),
