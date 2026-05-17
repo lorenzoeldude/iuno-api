@@ -42,8 +42,6 @@ func main() {
 		),
 	)
 
-	// http.HandleFunc("/api/trainer/list/random", handlers.ListTrainerHandler)
-
 	// =====================================================
 	// MORPHOLOGY / PARSER
 	// =====================================================
@@ -61,26 +59,44 @@ func main() {
 	http.HandleFunc("/api/auth/login", handlers.LoginHandler)
 
 	// =====================================================
+	// USER SETTINGS
+	// =====================================================
+	http.HandleFunc(
+		"/api/settings",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				handlers.UpdateSettingsHandler,
+			),
+		),
+	)
+
+	// =====================================================
 	// WORD LISTS
 	// =====================================================
 
 	// get user word lists
 	http.HandleFunc(
 		"/api/word-lists",
-		middleware.AuthMiddleware(handlers.GetWordListsHandler),
+		middleware.AuthMiddleware(
+			handlers.GetWordListsHandler,
+		),
 	)
 
 	// create word list
 	http.HandleFunc(
 		"/api/word-lists/create",
-		middleware.AuthMiddleware(handlers.CreateWordListHandler),
+		middleware.AuthMiddleware(
+			handlers.CreateWordListHandler,
+		),
 	)
 
 	// add lemma to list
 	http.HandleFunc(
 		"/api/word-lists/add-lemma",
 		middleware.CORSMiddleware(
-			middleware.AuthMiddleware(handlers.AddLemmaToUserListHandler),
+			middleware.AuthMiddleware(
+				handlers.AddLemmaToUserListHandler,
+			),
 		),
 	)
 
@@ -88,30 +104,39 @@ func main() {
 	http.HandleFunc(
 		"/api/word-lists/lemmas",
 		middleware.CORSMiddleware(
-			middleware.AuthMiddleware(handlers.GetWordListLemmasHandler),
+			middleware.AuthMiddleware(
+				handlers.GetWordListLemmasHandler,
+			),
 		),
 	)
 
 	// =====================================================
-	// LEMMA CHECK + DELETE (same route, different methods)
+	// LEMMA CHECK + DELETE
 	// /api/word-lists/lemma/:id
 	// =====================================================
 	http.HandleFunc(
 		"/api/word-lists/lemma/",
 		middleware.CORSMiddleware(
-			middleware.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			middleware.AuthMiddleware(
+				func(w http.ResponseWriter, r *http.Request) {
 
-				switch r.Method {
-				case http.MethodGet:
-					handlers.CheckLemmaSavedHandler(w, r)
+					switch r.Method {
 
-				case http.MethodDelete:
-					handlers.DeleteLemmaFromUserListHandler(w, r)
+					case http.MethodGet:
+						handlers.CheckLemmaSavedHandler(w, r)
 
-				default:
-					http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-				}
-			}),
+					case http.MethodDelete:
+						handlers.DeleteLemmaFromUserListHandler(w, r)
+
+					default:
+						http.Error(
+							w,
+							"method not allowed",
+							http.StatusMethodNotAllowed,
+						)
+					}
+				},
+			),
 		),
 	)
 
@@ -120,5 +145,7 @@ func main() {
 	// =====================================================
 	log.Println("Server running on http://localhost:8080")
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(
+		http.ListenAndServe(":8080", nil),
+	)
 }
