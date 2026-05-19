@@ -21,6 +21,8 @@ func GenerateNoun(lemma models.Lemma) []models.Form {
 			return generateSecondDeclension(lemma)
 		case 3: 
 			return generateThirdDeclension(lemma)
+		case 5: 
+			return generateFifthDeclension(lemma)
 	}
 
 	return []models.Form{}
@@ -147,6 +149,52 @@ func generateThirdDeclension(lemma models.Lemma) []models.Form {
 	}
 
 	return buildNounForms(lemma, stem, endings)
+}
+
+func generateFifthDeclension(lemma models.Lemma) []models.Form {
+
+	var stem string
+
+	var endings map[string]map[string]string
+
+	if strings.HasSuffix(*lemma.Genitive, "ēī") {
+		stem = removeEnding(*lemma.Genitive, "ēī")
+		endings = map[string]map[string]string{
+		"singular": {
+			"genitive":   "ēī",
+			"dative":     "ēī",
+			"accusative": "em",
+			"ablative":   "ē",
+		},
+		"plural": {
+			"nominative": "ēs",
+			"genitive":   "ērum",
+			"dative":     "ēbus",
+			"accusative": "ēs",
+			"ablative":   "ēbus",
+		},
+	}
+	} else {
+		stem = removeEnding(*lemma.Genitive, "eī")
+		endings = map[string]map[string]string{
+		"singular": {
+			"genitive":   "eī",
+			"dative":     "eī",
+			"accusative": "em",
+			"ablative":   "ē",
+		},
+		"plural": {
+			"nominative": "ēs",
+			"genitive":   "ērum",
+			"dative":     "ēbus",
+			"accusative": "ēs",
+			"ablative":   "ēbus",
+		},
+	}
+	}
+
+	return buildNounForms(lemma, stem, endings)
+
 }
 
 func buildNounForms(
