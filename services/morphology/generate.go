@@ -2,35 +2,27 @@ package morphology
 
 import "iuno-api/models"
 
-func Generate(
-	word models.Word,
-) []models.Form {
+func Generate(lemma models.Lemma,) []models.Form {
 
-	// =====================================================
 	// IRREGULAR OVERRIDE
-	// =====================================================
-
-	if word.Irregular {
-		return getIrregularForms(word)
+	if lemma.Irregular {
+		return getIrregularForms(lemma)
 	}
 
-	// =====================================================
 	// REGULAR SYSTEMS
-	// =====================================================
+	switch lemma.Type {
 
-	switch word.Type {
+		case "noun":
+			return GenerateNoun(lemma)
 
-	case "noun":
-		return GenerateNoun(word)
+		// case "verb":
+		// 	return GenerateVerb(lemma)
 
-	case "verb":
-		return GenerateVerb(word)
+		case "adjective":
+			return GenerateAdjective(lemma)
 
-	case "adjective":
-		return GenerateAdjective(word)
-
-	case "pronoun":
-		return GeneratePronoun(word)
+		case "pronoun":
+			return GeneratePronoun(lemma)
 	}
 
 	return []models.Form{}

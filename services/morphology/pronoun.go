@@ -6,9 +6,9 @@ import "iuno-api/models"
 // PRONOUN MORPHOLOGY ENGINE
 //
 
-func GeneratePronoun(word models.Word) []models.Form {
+func GeneratePronoun(lemma models.Lemma) []models.Form {
 
-	switch word.Lemma {
+	switch lemma.Lemma {
 
 	case "ego":
 		return generateEgo()

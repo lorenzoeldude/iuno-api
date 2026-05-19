@@ -11,7 +11,7 @@ import (
 
 func GetWord(slug string) (models.DictionaryResponse, error) {
 
-	var word models.Word
+	var lemma models.Lemma
 
 	log.Println("LOOKUP:", slug)
 
@@ -20,32 +20,30 @@ func GetWord(slug string) (models.DictionaryResponse, error) {
 			id,
 			slug,
 			lemma,
-			lemma_display,
 			type,
 			definition,
 			gender,
 			declension,
 			conjugation,
-			stem,
 			perfect,
 			supine,
-			is_irregular
+			irregular,
+			genitive
 		FROM lemmas
 		WHERE LOWER(slug) = LOWER($1)
 	`, slug).Scan(
-		&word.ID,
-		&word.Slug,
-		&word.Lemma,
-		&word.LemmaDisplay,
-		&word.Type,
-		&word.Definition,
-		&word.Gender,
-		&word.Declension,
-		&word.Conjugation,
-		&word.Stem,
-		&word.Perfect,
-		&word.Supine,
-		&word.Irregular,
+		&lemma.ID,
+		&lemma.Slug,
+		&lemma.Lemma,
+		&lemma.Type,
+		&lemma.Definition,
+		&lemma.Gender,
+		&lemma.Declension,
+		&lemma.Conjugation,
+		&lemma.Perfect,
+		&lemma.Supine,
+		&lemma.Irregular,
+		&lemma.Genitive,
 	)
 
 	if err != nil {
@@ -53,24 +51,18 @@ func GetWord(slug string) (models.DictionaryResponse, error) {
 		return models.DictionaryResponse{}, err
 	}
 
-	log.Println("FOUND:", word.Lemma)
+	log.Println("FOUND:", lemma.Lemma)
 
-	// =====================================================
-	// GENERATED MORPHOLOGY
-	// =====================================================
+	// Generate Morphology
+	forms := morphology.Generate(lemma)
 
-	forms := morphology.Generate(word)
-
-	// =====================================================
-	// EXAMPLES
-	// =====================================================
-
+	// Get Examples
 	rows, err := db.Pool.Query(context.Background(), `
 		SELECT id, latin
 		FROM examples
 		WHERE lemma_id = $1
 		ORDER BY id ASC
-	`, word.ID)
+	`, lemma.ID)
 
 	if err != nil {
 		log.Println("EXAMPLES ERROR:", err)
@@ -99,16 +91,13 @@ func GetWord(slug string) (models.DictionaryResponse, error) {
 	}
 
 
-		// =====================================================
-	// MEANINGS
-	// =====================================================
-
+	// Get Meanings
 	rows, err = db.Pool.Query(context.Background(), `
 		SELECT id, meaning
 		FROM meanings
 		WHERE lemma_id = $1
 		ORDER BY sort_order ASC
-	`, word.ID)
+	`, lemma.ID)
 
 	if err != nil {
 		return models.DictionaryResponse{}, err
@@ -135,14 +124,9 @@ func GetWord(slug string) (models.DictionaryResponse, error) {
 		meanings = append(meanings, m)
 	}
 
-
-
-	// =====================================================
 	// RESPONSE
-	// =====================================================
-
 	response := models.DictionaryResponse{
-		Word:     word,
+		Lemma:     lemma,
 		Forms:    forms,
 		Examples: examples,
 		Meanings: meanings,

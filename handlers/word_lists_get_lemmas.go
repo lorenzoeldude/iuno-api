@@ -25,6 +25,7 @@ func GetWordListLemmasHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// AUTH USER
 	// =====================================================
+
 	claimsRaw := r.Context().Value(middleware.UserContextKey)
 	if claimsRaw == nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -40,8 +41,9 @@ func GetWordListLemmasHandler(w http.ResponseWriter, r *http.Request) {
 	userID := claims.UserID
 
 	// =====================================================
-	// GET USER LIST (SINGLE LIST DESIGN)
+	// GET USER LIST
 	// =====================================================
+
 	var listID int
 
 	err := db.Pool.QueryRow(r.Context(), `
@@ -60,21 +62,21 @@ func GetWordListLemmasHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// QUERY LEMMAS
 	// =====================================================
+
 	rows, err := db.Pool.Query(r.Context(), `
 		SELECT
 			l.id,
 			l.slug,
 			l.lemma,
-			l.lemma_display,
 			l.type,
 			l.definition,
 			l.gender,
 			l.declension,
 			l.conjugation,
-			l.stem,
 			l.perfect,
 			l.supine,
-			l.is_irregular
+			l.irregular,
+			l.genitive
 		FROM word_list_lemmas wll
 		JOIN lemmas l ON l.id = wll.lemma_id
 		WHERE wll.list_id = $1
@@ -88,32 +90,32 @@ func GetWordListLemmasHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	lemmas := []models.Word{}
+	lemmas := []models.Lemma{}
 
 	for rows.Next() {
-		var word models.Word
+
+		var lemma models.Lemma
 
 		err := rows.Scan(
-			&word.ID,
-			&word.Slug,
-			&word.Lemma,
-			&word.LemmaDisplay,
-			&word.Type,
-			&word.Definition,
-			&word.Gender,
-			&word.Declension,
-			&word.Conjugation,
-			&word.Stem,
-			&word.Perfect,
-			&word.Supine,
-			&word.Irregular,
+			&lemma.ID,
+			&lemma.Slug,
+			&lemma.Lemma,
+			&lemma.Type,
+			&lemma.Definition,
+			&lemma.Gender,
+			&lemma.Declension,
+			&lemma.Conjugation,
+			&lemma.Perfect,
+			&lemma.Supine,
+			&lemma.Irregular,
+			&lemma.Genitive,
 		)
 
 		if err != nil {
 			continue
 		}
 
-		lemmas = append(lemmas, word)
+		lemmas = append(lemmas, lemma)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

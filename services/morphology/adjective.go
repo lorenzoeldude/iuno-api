@@ -2,38 +2,17 @@ package morphology
 
 import "iuno-api/models"
 
-//
-// ADJECTIVE MORPHOLOGY ENGINE
-//
-// This file generates:
-//
-// - masculine forms
-// - feminine forms
-// - neuter forms
-//
-// across:
-//
-// - singular
-// - plural
-// - all grammatical cases
-//
-// Supported:
-//
-// - 1st/2nd declension adjectives
-//
-// Example:
-//
-// bonus, bona, bonum
-//
 
-func GenerateAdjective(
-	word models.Word,
-) []models.Form {
+func GenerateAdjective(lemma models.Lemma,) []models.Form {
 
-	switch word.Declension {
+	if lemma.Declension == nil {
+		return []models.Form{}
+	}
+
+	switch *lemma.Declension {
 
 	case 1:
-		return generateFirstSecondDeclensionAdjective(word)
+		return generateFirstSecondDeclensionAdjective(lemma)
 	}
 
 	return []models.Form{}
@@ -42,37 +21,32 @@ func GenerateAdjective(
 // =====================================================
 // 1ST / 2ND DECLENSION ADJECTIVES
 // =====================================================
-//
-// bonus, bona, bonum
-//
-// stem = bon-
-//
 
 func generateFirstSecondDeclensionAdjective(
-	word models.Word,
+	lemma models.Lemma,
 ) []models.Form {
 
-	stem := word.Stem
+	stem := lemma.Lemma
 
 	if stem == "" {
-		stem = removeEnding(word.Lemma, "us")
+		stem = removeEnding(lemma.Lemma, "us")
 	}
 
 	var forms []models.Form
 
 	forms = append(
 		forms,
-		buildMasculineAdjectiveForms(word, stem)...,
+		buildMasculineAdjectiveForms(lemma, stem)...,
 	)
 
 	forms = append(
 		forms,
-		buildFeminineAdjectiveForms(word, stem)...,
+		buildFeminineAdjectiveForms(lemma, stem)...,
 	)
 
 	forms = append(
 		forms,
-		buildNeuterAdjectiveForms(word, stem)...,
+		buildNeuterAdjectiveForms(lemma, stem)...,
 	)
 
 	return forms
@@ -83,7 +57,7 @@ func generateFirstSecondDeclensionAdjective(
 // =====================================================
 
 func buildMasculineAdjectiveForms(
-	word models.Word,
+	lemma models.Lemma,
 	stem string,
 ) []models.Form {
 
@@ -120,7 +94,7 @@ func buildMasculineAdjectiveForms(
 // =====================================================
 
 func buildFeminineAdjectiveForms(
-	word models.Word,
+	lemma models.Lemma,
 	stem string,
 ) []models.Form {
 
@@ -157,7 +131,7 @@ func buildFeminineAdjectiveForms(
 // =====================================================
 
 func buildNeuterAdjectiveForms(
-	word models.Word,
+	lemma models.Lemma,
 	stem string,
 ) []models.Form {
 

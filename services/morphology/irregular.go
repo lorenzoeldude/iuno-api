@@ -10,24 +10,24 @@ import "iuno-api/models"
 // conjugation rules.
 //
 
-func getIrregularForms(word models.Word) []models.Form {
+func getIrregularForms(lemma models.Lemma) []models.Form {
 
-	switch word.Lemma {
+	switch lemma.Lemma {
 
-	case "esse":
-		return generateEsse()
+		case "esse":
+			return generateEsse()
 
-	case "posse":
-		return generatePosse()
+		case "posse":
+			return generatePosse()
 
-	case "velle":
-		return generateVelle()
+		case "velle":
+			return generateVelle()
 
-	case "ire":
-		return generateIre()
+		case "ire":
+			return generateIre()
 
-	case "ferre":
-		return generateFerre()
+		case "ferre":
+			return generateFerre()
 	}
 
 	return []models.Form{}

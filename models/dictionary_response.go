@@ -11,7 +11,7 @@ type Meaning struct {
 }
 
 type DictionaryResponse struct {
-	Word     Word      `json:"word"`
+	Lemma     Lemma      `json:"lemma"`
 	Forms    []Form    `json:"forms"`
 	Examples []Example `json:"examples"`
 	Meanings []Meaning `json:"meanings"`

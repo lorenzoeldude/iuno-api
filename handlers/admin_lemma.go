@@ -12,7 +12,7 @@ import (
 )
 
 type AdminLemmaRequest struct {
-	Word     models.Word `json:"word"`
+	Lemma     models.Lemma `json:"lemma"`
 	Meanings []string    `json:"meanings"`
 }
 
@@ -50,7 +50,7 @@ func UpsertLemmaHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if body.Word.Lemma == "" {
+	if body.Lemma.Lemma == "" {
 		http.Error(w, "lemma is required", http.StatusBadRequest)
 		return
 	}
@@ -58,8 +58,8 @@ func UpsertLemmaHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// FALLBACK SLUG
 	// =====================================================
-	if body.Word.Slug == "" {
-		body.Word.Slug = body.Word.Lemma
+	if body.Lemma.Slug == "" {
+		body.Lemma.Slug = body.Lemma.Lemma
 	}
 
 	// =====================================================
@@ -71,48 +71,45 @@ func UpsertLemmaHandler(w http.ResponseWriter, r *http.Request) {
 		INSERT INTO lemmas (
 			lemma,
 			slug,
-			lemma_display,
 			type,
 			definition,
 			gender,
 			declension,
 			conjugation,
-			stem,
 			perfect,
 			supine,
-			is_irregular
+			irregular,
+			genitive
 		)
 		VALUES (
 			$1,$2,$3,$4,$5,
-			$6,$7,$8,$9,$10,$11,$12
+			$6,$7,$8,$9,$10,$11
 		)
 		ON CONFLICT (lemma)
 		DO UPDATE SET
 			slug = EXCLUDED.slug,
-			lemma_display = EXCLUDED.lemma_display,
 			type = EXCLUDED.type,
 			definition = EXCLUDED.definition,
 			gender = EXCLUDED.gender,
 			declension = EXCLUDED.declension,
 			conjugation = EXCLUDED.conjugation,
-			stem = EXCLUDED.stem,
 			perfect = EXCLUDED.perfect,
 			supine = EXCLUDED.supine,
-			is_irregular = EXCLUDED.is_irregular
+			irregular = EXCLUDED.irregular,
+			genitive = EXCLUDED.genitive
 		RETURNING id
 	`,
-		body.Word.Lemma,
-		body.Word.Slug,
-		body.Word.LemmaDisplay,
-		body.Word.Type,
-		body.Word.Definition,
-		body.Word.Gender,
-		body.Word.Declension,
-		body.Word.Conjugation,
-		body.Word.Stem,
-		body.Word.Perfect,
-		body.Word.Supine,
-		body.Word.Irregular,
+		body.Lemma.Lemma,
+		body.Lemma.Slug,
+		body.Lemma.Type,
+		body.Lemma.Definition,
+		body.Lemma.Gender,
+		body.Lemma.Declension,
+		body.Lemma.Conjugation,
+		body.Lemma.Perfect,
+		body.Lemma.Supine,
+		body.Lemma.Irregular,
+		body.Lemma.Genitive,
 	).Scan(&id)
 
 	if err != nil {
