@@ -16,7 +16,6 @@ func GenerateNoun(lemma models.Lemma) []models.Form {
 	switch *lemma.Declension {
 		case 1:
 			return generateFirstDeclension(lemma)
-
 		case 2: 
 			return generateSecondDeclension(lemma)
 		case 3: 
