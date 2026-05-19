@@ -2,7 +2,7 @@ package morphology
 
 import (
 	"iuno-api/models"
-	// "strings"
+	"strings"
 )
 
 //
@@ -19,6 +19,8 @@ func GenerateNoun(lemma models.Lemma) []models.Form {
 
 		case 2: 
 			return generateSecondDeclension(lemma)
+		case 3: 
+			return generateThirdDeclension(lemma)
 	}
 
 	return []models.Form{}
@@ -62,22 +64,22 @@ func generateSecondDeclension(lemma models.Lemma) []models.Form {
 
 	if (*lemma.Gender == "neuter") {
 		endings = map[string]map[string]string{
-		"singular": {
-			"genitive":   "ī",
-			"dative":     "ō",
-			"accusative": "um",
-			"ablative":   "ō",
-			"vocative":   "um",
-		},
-		"plural": {
-			"nominative": "a",
-			"genitive":   "ōrum",
-			"dative":     "īs",
-			"accusative": "a",
-			"ablative":   "īs",
-			"vocative":   "a",
-		},
-	}
+			"singular": {
+				"genitive":   "ī",
+				"dative":     "ō",
+				"accusative": "um",
+				"ablative":   "ō",
+				"vocative":   "um",
+			},
+			"plural": {
+				"nominative": "a",
+				"genitive":   "ōrum",
+				"dative":     "īs",
+				"accusative": "a",
+				"ablative":   "īs",
+				"vocative":   "a",
+			},
+		}
 	} else {
 		endings = map[string]map[string]string{
 			"singular": {
@@ -94,6 +96,52 @@ func generateSecondDeclension(lemma models.Lemma) []models.Form {
 				"accusative": "ōs",
 				"ablative":   "īs",
 				"vocative":   "ī",
+			},
+		}
+	}
+
+	return buildNounForms(lemma, stem, endings)
+}
+
+func generateThirdDeclension(lemma models.Lemma) []models.Form {
+
+	stem := removeEnding(*lemma.Genitive, "is")
+	var endings map[string]map[string]string
+
+	if (*lemma.Gender == "neuter") {
+		endings = map[string]map[string]string{
+			"singular": {
+				"genitive":   "is",
+				"dative":     "ī",
+				"accusative": "us",
+				"ablative":   "e",
+				"vocative":   "us",
+			},
+			"plural": {
+				"nominative": "a",
+				"genitive":   "um",
+				"dative":     "ibus",
+				"accusative": "a",
+				"ablative":   "ibus",
+				"vocative":   "a",
+			},
+		}
+	}else {
+		endings = map[string]map[string]string{
+			"singular": {
+				"genitive":   "is",
+				"dative":     "ī",
+				"accusative": "em",
+				"ablative":   "e",
+				// "vocative":   "e",
+			},
+			"plural": {
+				"nominative": "ēs",
+				"genitive":   "um",
+				"dative":     "ibus",
+				"accusative": "ēs",
+				"ablative":   "ibus",
+				// "vocative":   "ī",
 			},
 		}
 	}
@@ -127,6 +175,50 @@ func buildNounForms(
 			if number == "singular" && c == "nominative" {
 				form = lemma.Lemma
 			}
+
+			// 3rd declension
+			if *lemma.Declension == 3 {
+				// neuter sing. nom == acc == voc
+				if *lemma.Gender == "neuter" {
+					if number == "singular" {
+						if c == "accusative" {
+							form = lemma.Lemma
+						} else if c == "vocative" {
+							form = lemma.Lemma
+						}
+					}
+				}
+				// sing. voc. == sing. nom.
+				if number == "singular" && c == "vocative" {
+					form = lemma.Lemma
+				}
+				// I-Stem
+				if number == "plural" && c == "genitive" {
+					if strings.HasSuffix(lemma.Lemma, "is") || 
+						(*lemma.Gender == "neuter" && 
+						(strings.HasSuffix(lemma.Lemma, "e") ||
+						strings.HasSuffix(lemma.Lemma, "al") ||
+						strings.HasSuffix(lemma.Lemma, "ar"))){
+							form = stem + "ium"
+					}
+				}
+
+				// I-Stem Neuter Plural
+				if *lemma.Gender == "neuter" &&
+					number == "plural" &&
+					(c == "nominative" ||
+					c == "accusative" ||
+					c == "vocative") {
+
+					if strings.HasSuffix(lemma.Lemma, "e") ||
+						strings.HasSuffix(lemma.Lemma, "al") ||
+						strings.HasSuffix(lemma.Lemma, "ar") {
+
+						form = stem + "ia"
+					}
+				}
+			}
+
 
 			forms = append(forms, models.Form{
 				Form:   form,
