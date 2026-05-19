@@ -21,6 +21,8 @@ func GenerateNoun(lemma models.Lemma) []models.Form {
 			return generateSecondDeclension(lemma)
 		case 3: 
 			return generateThirdDeclension(lemma)
+		case 4:
+			return generateFourthDeclension(lemma)
 		case 5: 
 			return generateFifthDeclension(lemma)
 	}
@@ -144,6 +146,52 @@ func generateThirdDeclension(lemma models.Lemma) []models.Form {
 				"accusative": "ēs",
 				"ablative":   "ibus",
 				// "vocative":   "ī",
+			},
+		}
+	}
+
+	return buildNounForms(lemma, stem, endings)
+}
+
+func generateFourthDeclension(lemma models.Lemma) []models.Form {
+
+	stem := removeEnding(*lemma.Genitive, "ūs")
+	var endings map[string]map[string]string
+
+	if (*lemma.Gender == "neuter") {
+		endings = map[string]map[string]string{
+			"singular": {
+				"genitive":   "ūs",
+				"dative":     "ū",
+				"accusative": "ū",
+				"ablative":   "ū",
+				// "vocative":   "us",
+			},
+			"plural": {
+				"nominative": "ua",
+				"genitive":   "uum",
+				"dative":     "ibus",
+				"accusative": "ua",
+				"ablative":   "ibus",
+				// "vocative":   "a",
+			},
+		}
+	}else {
+		endings = map[string]map[string]string{
+			"singular": {
+				"genitive":   "ūs",
+				"dative":     "uī",
+				"accusative": "um",
+				"ablative":   "ū",
+				// "vocative":   "us",
+			},
+			"plural": {
+				"nominative": "ūs",
+				"genitive":   "uum",
+				"dative":     "ibus",
+				"accusative": "ūs",
+				"ablative":   "ibus",
+				// "vocative":   "a",
 			},
 		}
 	}
