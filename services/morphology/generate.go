@@ -15,8 +15,8 @@ func Generate(lemma models.Lemma,) []models.Form {
 		case "noun":
 			return GenerateNoun(lemma)
 
-		// case "verb":
-		// 	return GenerateVerb(lemma)
+		case "verb":
+			return GenerateVerb(lemma)
 
 		case "adjective":
 			return GenerateAdjective(lemma)

@@ -28,7 +28,8 @@ func GetWord(slug string) (models.DictionaryResponse, error) {
 			perfect,
 			supine,
 			irregular,
-			genitive
+			genitive,
+			infinitive
 		FROM lemmas
 		WHERE LOWER(slug) = LOWER($1)
 	`, slug).Scan(
@@ -44,6 +45,7 @@ func GetWord(slug string) (models.DictionaryResponse, error) {
 		&lemma.Supine,
 		&lemma.Irregular,
 		&lemma.Genitive,
+		&lemma.Infinitive,
 	)
 
 	if err != nil {

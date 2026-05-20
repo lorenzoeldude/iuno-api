@@ -16,6 +16,7 @@ type Lemma struct {
 	Conjugation *int `json:"conjugation"`
 	Perfect *string `json:"perfect"`
 	Supine *string `json:"supine"`
+	Infinitive *string `json:"infinitive"`
 
 	// ENGINE FLAGS
 	Irregular bool `json:"irregular"`
