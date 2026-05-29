@@ -56,10 +56,10 @@ func UpsertLemmaHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// =====================================================
-	// FALLBACK SLUG
+	// FALLBACK LemmaNormalized
 	// =====================================================
-	if body.Lemma.Slug == "" {
-		body.Lemma.Slug = body.Lemma.Lemma
+	if body.Lemma.LemmaNormalized == "" {
+		body.Lemma.LemmaNormalized = body.Lemma.Lemma
 	}
 
 	// =====================================================
@@ -70,9 +70,8 @@ func UpsertLemmaHandler(w http.ResponseWriter, r *http.Request) {
 	err = db.Pool.QueryRow(context.Background(), `
 		INSERT INTO lemmas (
 			lemma,
-			slug,
-			type,
-			definition,
+			lemma_normalized,
+			part_of_speech,
 			gender,
 			declension,
 			conjugation,
@@ -87,9 +86,8 @@ func UpsertLemmaHandler(w http.ResponseWriter, r *http.Request) {
 		)
 		ON CONFLICT (lemma)
 		DO UPDATE SET
-			slug = EXCLUDED.slug,
+			lemma_normalized = EXCLUDED.lemma_normalized,
 			type = EXCLUDED.type,
-			definition = EXCLUDED.definition,
 			gender = EXCLUDED.gender,
 			declension = EXCLUDED.declension,
 			conjugation = EXCLUDED.conjugation,
@@ -100,9 +98,8 @@ func UpsertLemmaHandler(w http.ResponseWriter, r *http.Request) {
 		RETURNING id
 	`,
 		body.Lemma.Lemma,
-		body.Lemma.Slug,
-		body.Lemma.Type,
-		body.Lemma.Definition,
+		body.Lemma.LemmaNormalized,
+		body.Lemma.PartOfSpeech,
 		body.Lemma.Gender,
 		body.Lemma.Declension,
 		body.Lemma.Conjugation,

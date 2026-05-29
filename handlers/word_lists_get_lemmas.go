@@ -66,10 +66,9 @@ func GetWordListLemmasHandler(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Pool.Query(r.Context(), `
 		SELECT
 			l.id,
-			l.slug,
+			l.lemma_normalized,
 			l.lemma,
-			l.type,
-			l.definition,
+			l.part_of_speech,
 			l.gender,
 			l.declension,
 			l.conjugation,
@@ -98,10 +97,9 @@ func GetWordListLemmasHandler(w http.ResponseWriter, r *http.Request) {
 
 		err := rows.Scan(
 			&lemma.ID,
-			&lemma.Slug,
+			&lemma.LemmaNormalized,
 			&lemma.Lemma,
-			&lemma.Type,
-			&lemma.Definition,
+			&lemma.PartOfSpeech,
 			&lemma.Gender,
 			&lemma.Declension,
 			&lemma.Conjugation,

@@ -2,10 +2,9 @@ package models
 
 type Lemma struct {
 	ID int `json:"id"`
-	Slug string `json:"slug"`
 	Lemma string `json:"lemma"`
-	Type string `json:"type"`
-	Definition string `json:"definition"`
+	LemmaNormalized string `json:"lemma_normalized"`
+	PartOfSpeech string `json:"part_of_speech"`
 
 	// NOUN / ADJECTIVE
 	Gender *string `json:"gender"`

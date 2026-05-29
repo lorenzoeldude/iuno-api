@@ -25,6 +25,7 @@ func main() {
 	// =====================================================
 	http.HandleFunc("/api/word/", handlers.WordHandler)
 
+
 	// =====================================================
 	// SEARCH
 	// =====================================================
@@ -50,7 +51,12 @@ func main() {
 	// =====================================================
 	// ADMIN
 	// =====================================================
-	http.HandleFunc("/api/admin/lemma", handlers.UpsertLemmaHandler)
+	// http.HandleFunc("/api/admin/lemma", handlers.UpsertLemmaHandler)
+
+	// =====================================================
+	// Write Word
+	// =====================================================
+	http.HandleFunc("/api/admin/write-word/", handlers.WriteWordHandler)
 
 	// =====================================================
 	// AUTH

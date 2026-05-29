@@ -192,13 +192,13 @@ func buildAdjectiveForms(
 			forms = append(forms, models.Form{
 				Form: stem + endings[number][grammaticalCase],
 
-				Part: "adjective",
+				PartOfSpeech: "adjective",
 
-				Case: grammaticalCase,
+				GrammaticalCase: &grammaticalCase,
 
 				Number: number,
 
-				Gender: gender,
+				Gender: &gender,
 			})
 		}
 	}

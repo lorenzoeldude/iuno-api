@@ -282,21 +282,21 @@ func generateFirstConjugation(lemma models.Lemma) []models.Form {
 	forms = append(forms,
 		models.Form{
 			Form:   presentStem + "ā",
-			Part:   "verb",
-			Person: 2,
+			PartOfSpeech:   "verb",
+			Person: IntPtr(2),
 			Number: "singular",
-			Tense:  "present",
-			Mood:   "imperative",
-			Voice:  "active",
+			Tense:  StringPtr("present"),
+			Mood:   StringPtr("imperative"),
+			Voice:  StringPtr("active"),
 		},
 		models.Form{
 			Form:   presentStem + "āte",
-			Part:   "verb",
-			Person: 2,
+			PartOfSpeech:   "verb",
+			Person: IntPtr(2),
 			Number: "plural",
-			Tense:  "present",
-			Mood:   "imperative",
-			Voice:  "active",
+			Tense:  StringPtr("present"),
+			Mood:   StringPtr("imperative"),
+			Voice:  StringPtr("active"),
 		},
 	)
 
@@ -378,190 +378,65 @@ func generateFirstConjugation(lemma models.Lemma) []models.Form {
 	// PERFECT PASSIVE INDICATIVE
 	//
 
-	forms = append(forms,
-
-		models.Form{
-			Form:   ppp + "us sum",
-			Part:   "verb",
-			Person: 1,
-			Number: "singular",
-			Tense:  "perfect",
-			Mood:   "indicative",
-			Voice:  "passive",
+	forms = append(forms, buildPerfectPassiveForms(
+		ppp,
+		map[string]map[string]string{
+			"singular": {
+				"first":  "us sum",
+				"second": "us es",
+				"third":  "us est",
+			},
+			"plural": {
+				"first":  "ī sumus",
+				"second": "ī estis",
+				"third":  "ī sunt",
+			},
 		},
-		models.Form{
-			Form:   ppp + "us es",
-			Part:   "verb",
-			Person: 2,
-			Number: "singular",
-			Tense:  "perfect",
-			Mood:   "indicative",
-			Voice:  "passive",
-		},
-		models.Form{
-			Form:   ppp + "us est",
-			Part:   "verb",
-			Person: 3,
-			Number: "singular",
-			Tense:  "perfect",
-			Mood:   "indicative",
-			Voice:  "passive",
-		},
-
-		models.Form{
-			Form:   ppp + "ī sumus",
-			Part:   "verb",
-			Person: 1,
-			Number: "plural",
-			Tense:  "perfect",
-			Mood:   "indicative",
-			Voice:  "passive",
-		},
-		models.Form{
-			Form:   ppp + "ī estis",
-			Part:   "verb",
-			Person: 2,
-			Number: "plural",
-			Tense:  "perfect",
-			Mood:   "indicative",
-			Voice:  "passive",
-		},
-		models.Form{
-			Form:   ppp + "ī sunt",
-			Part:   "verb",
-			Person: 3,
-			Number: "plural",
-			Tense:  "perfect",
-			Mood:   "indicative",
-			Voice:  "passive",
-		},
-	)
+		"perfect",
+		"indicative",
+	)...)
 
 	//
 	// PLUPERFECT PASSIVE INDICATIVE
 	//
-
-	forms = append(forms,
-
-		models.Form{
-			Form:   ppp + "us eram",
-			Part:   "verb",
-			Person: 1,
-			Number: "singular",
-			Tense:  "pluperfect",
-			Mood:   "indicative",
-			Voice:  "passive",
+	forms = append(forms, buildPerfectPassiveForms(
+		ppp,
+		map[string]map[string]string{
+			"singular": {
+				"first":  "us eram",
+				"second": "us erās",
+				"third":  "us erat",
+			},
+			"plural": {
+				"first":  "ī erāmus",
+				"second": "ī erātis",
+				"third":  "ī erant",
+			},
 		},
-		models.Form{
-			Form:   ppp + "us erās",
-			Part:   "verb",
-			Person: 2,
-			Number: "singular",
-			Tense:  "pluperfect",
-			Mood:   "indicative",
-			Voice:  "passive",
-		},
-		models.Form{
-			Form:   ppp + "us erat",
-			Part:   "verb",
-			Person: 3,
-			Number: "singular",
-			Tense:  "pluperfect",
-			Mood:   "indicative",
-			Voice:  "passive",
-		},
-
-		models.Form{
-			Form:   ppp + "ī erāmus",
-			Part:   "verb",
-			Person: 1,
-			Number: "plural",
-			Tense:  "pluperfect",
-			Mood:   "indicative",
-			Voice:  "passive",
-		},
-		models.Form{
-			Form:   ppp + "ī erātis",
-			Part:   "verb",
-			Person: 2,
-			Number: "plural",
-			Tense:  "pluperfect",
-			Mood:   "indicative",
-			Voice:  "passive",
-		},
-		models.Form{
-			Form:   ppp + "ī erant",
-			Part:   "verb",
-			Person: 3,
-			Number: "plural",
-			Tense:  "pluperfect",
-			Mood:   "indicative",
-			Voice:  "passive",
-		},
-	)
+		"pluperfect",
+		"indicative",
+	)...)
 
 	//
 	// FUTURE PERFECT PASSIVE INDICATIVE
 	//
-
-	forms = append(forms,
-
-		models.Form{
-			Form:   ppp + "us erō",
-			Part:   "verb",
-			Person: 1,
-			Number: "singular",
-			Tense:  "future perfect",
-			Mood:   "indicative",
-			Voice:  "passive",
+	forms = append(forms, buildPerfectPassiveForms(
+		ppp,
+		map[string]map[string]string{
+			"singular": {
+				"first":  "us erō",
+				"second": "us eris",
+				"third":  "us erit",
+			},
+			"plural": {
+				"first":  "ī erimus",
+				"second": "ī eritis",
+				"third":  "ī erunt",
+			},
 		},
-		models.Form{
-			Form:   ppp + "us eris",
-			Part:   "verb",
-			Person: 2,
-			Number: "singular",
-			Tense:  "future perfect",
-			Mood:   "indicative",
-			Voice:  "passive",
-		},
-		models.Form{
-			Form:   ppp + "us erit",
-			Part:   "verb",
-			Person: 3,
-			Number: "singular",
-			Tense:  "future perfect",
-			Mood:   "indicative",
-			Voice:  "passive",
-		},
-
-		models.Form{
-			Form:   ppp + "ī erimus",
-			Part:   "verb",
-			Person: 1,
-			Number: "plural",
-			Tense:  "future perfect",
-			Mood:   "indicative",
-			Voice:  "passive",
-		},
-		models.Form{
-			Form:   ppp + "ī eritis",
-			Part:   "verb",
-			Person: 2,
-			Number: "plural",
-			Tense:  "future perfect",
-			Mood:   "indicative",
-			Voice:  "passive",
-		},
-		models.Form{
-			Form:   ppp + "ī erunt",
-			Part:   "verb",
-			Person: 3,
-			Number: "plural",
-			Tense:  "future perfect",
-			Mood:   "indicative",
-			Voice:  "passive",
-		},
-	)
+		"future perfect",
+		"indicative",
+	)...)
 
 	//
 	// PRESENT PASSIVE SUBJUNCTIVE
@@ -615,128 +490,44 @@ func generateFirstConjugation(lemma models.Lemma) []models.Form {
 	//
 	// PERFECT PASSIVE SUBJUNCTIVE
 	//
-
-	forms = append(forms,
-
-		models.Form{
-			Form:   ppp + "us sim",
-			Part:   "verb",
-			Person: 1,
-			Number: "singular",
-			Tense:  "perfect",
-			Mood:   "subjunctive",
-			Voice:  "passive",
+	forms = append(forms, buildPerfectPassiveForms(
+		ppp,
+		map[string]map[string]string{
+			"singular": {
+				"first":  "us sim",
+				"second": "us sīs",
+				"third":  "us sit",
+			},
+			"plural": {
+				"first":  "ī sīmus",
+				"second": "ī sītis",
+				"third":  "ī sint",
+			},
 		},
-		models.Form{
-			Form:   ppp + "us sīs",
-			Part:   "verb",
-			Person: 2,
-			Number: "singular",
-			Tense:  "perfect",
-			Mood:   "subjunctive",
-			Voice:  "passive",
-		},
-		models.Form{
-			Form:   ppp + "us sit",
-			Part:   "verb",
-			Person: 3,
-			Number: "singular",
-			Tense:  "perfect",
-			Mood:   "subjunctive",
-			Voice:  "passive",
-		},
-
-		models.Form{
-			Form:   ppp + "ī sīmus",
-			Part:   "verb",
-			Person: 1,
-			Number: "plural",
-			Tense:  "perfect",
-			Mood:   "subjunctive",
-			Voice:  "passive",
-		},
-		models.Form{
-			Form:   ppp + "ī sītis",
-			Part:   "verb",
-			Person: 2,
-			Number: "plural",
-			Tense:  "perfect",
-			Mood:   "subjunctive",
-			Voice:  "passive",
-		},
-		models.Form{
-			Form:   ppp + "ī sint",
-			Part:   "verb",
-			Person: 3,
-			Number: "plural",
-			Tense:  "perfect",
-			Mood:   "subjunctive",
-			Voice:  "passive",
-		},
-	)
+		"perfect",
+		"subjunctive",
+	)...)
 
 	//
 	// PLUPERFECT PASSIVE SUBJUNCTIVE
 	//
-
-	forms = append(forms,
-
-		models.Form{
-			Form:   ppp + "us essem",
-			Part:   "verb",
-			Person: 1,
-			Number: "singular",
-			Tense:  "pluperfect",
-			Mood:   "subjunctive",
-			Voice:  "passive",
+	forms = append(forms, buildPerfectPassiveForms(
+		ppp,
+		map[string]map[string]string{
+			"singular": {
+				"first":  "us essem",
+				"second": "us essēs",
+				"third":  "us esset",
+			},
+			"plural": {
+				"first":  "ī essēmus",
+				"second": "ī essētis",
+				"third":  "ī essent",
+			},
 		},
-		models.Form{
-			Form:   ppp + "us essēs",
-			Part:   "verb",
-			Person: 2,
-			Number: "singular",
-			Tense:  "pluperfect",
-			Mood:   "subjunctive",
-			Voice:  "passive",
-		},
-		models.Form{
-			Form:   ppp + "us esset",
-			Part:   "verb",
-			Person: 3,
-			Number: "singular",
-			Tense:  "pluperfect",
-			Mood:   "subjunctive",
-			Voice:  "passive",
-		},
-
-		models.Form{
-			Form:   ppp + "ī essēmus",
-			Part:   "verb",
-			Person: 1,
-			Number: "plural",
-			Tense:  "pluperfect",
-			Mood:   "subjunctive",
-			Voice:  "passive",
-		},
-		models.Form{
-			Form:   ppp + "ī essētis",
-			Part:   "verb",
-			Person: 2,
-			Number: "plural",
-			Tense:  "pluperfect",
-			Mood:   "subjunctive",
-			Voice:  "passive",
-		},
-		models.Form{
-			Form:   ppp + "ī essent",
-			Part:   "verb",
-			Person: 3,
-			Number: "plural",
-			Tense:  "pluperfect",
-			Mood:   "subjunctive",
-			Voice:  "passive",
-		},
-	)
+		"pluperfect",
+		"subjunctive",
+	)...)
 
 	//
 	// PRESENT PASSIVE IMPERATIVE
@@ -745,21 +536,21 @@ func generateFirstConjugation(lemma models.Lemma) []models.Form {
 	forms = append(forms,
 		models.Form{
 			Form:   presentStem + "āre",
-			Part:   "verb",
-			Person: 2,
+			PartOfSpeech:   "verb",
+			Person: IntPtr(2),
 			Number: "singular",
-			Tense:  "present",
-			Mood:   "imperative",
-			Voice:  "passive",
+			Tense:  StringPtr("present"),
+			Mood:   StringPtr("imperative"),
+			Voice:  StringPtr("passive"),
 		},
 		models.Form{
 			Form:   presentStem + "āminī",
-			Part:   "verb",
-			Person: 2,
+			PartOfSpeech:   "verb",
+			Person: IntPtr(2),
 			Number: "plural",
-			Tense:  "present",
-			Mood:   "imperative",
-			Voice:  "passive",
+			Tense:  StringPtr("present"),
+			Mood:   StringPtr("imperative"),
+			Voice:  StringPtr("passive"),
 		},
 	)
 
@@ -788,37 +579,36 @@ func buildVerbForms(
 		"plural",
 	}
 
-	// numbers := []int{1, 2}
-
 	persons := []int{1, 2, 3}
 
 	for _, number := range numbers {
-	for _, person := range persons {
+		for _, person := range persons {
 
-		var personKey string
+			var personKey string
 
-		switch person {
-		case 1:
-			personKey = "first"
-		case 2:
-			personKey = "second"
-		case 3:
-			personKey = "third"
+			switch person {
+			case 1:
+				personKey = "first"
+			case 2:
+				personKey = "second"
+			case 3:
+				personKey = "third"
+			}
+
+			form := stem + endings[number][personKey]
+
+			forms = append(forms,
+				verbForm(
+					form,
+					person,
+					number,
+					tense,
+					mood,
+					voice,
+				),
+			)
 		}
-
-		form := stem + endings[number][personKey]
-
-		forms = append(forms, models.Form{
-			Form:   form,
-			Person: person,
-			Number: number,
-			Tense:  tense,
-			Mood:   mood,
-			Voice:  voice,
-			Part: "verb",
-		})
 	}
-}
 
 	return forms
 }
@@ -833,7 +623,7 @@ func buildPerfectPassiveForms(
 	var forms []models.Form
 
 	numbers := []string{"singular", "plural"}
-	persons := []int{1,2,3}
+	persons := []int{1, 2, 3}
 
 	for _, number := range numbers {
 		for _, person := range persons {
@@ -851,35 +641,18 @@ func buildPerfectPassiveForms(
 
 			form := ppp + "us " + sumForms[number][key]
 
-			forms = append(forms, models.Form{
-				Form: form,
-				Person: person,
-				Number: number,
-				Tense: tense,
-				Mood: mood,
-				Voice: "passive",
-				Part: "verb",
-			})
+			forms = append(forms,
+				verbForm(
+					form,
+					person,
+					number,
+					tense,
+					mood,
+					"passive",
+				),
+			)
 		}
 	}
 
 	return forms
-}
-
-//
-// =====================================================
-// HELPERS
-// =====================================================
-//
-
-func pppStem(supine string) string {
-	return removeEnding(supine, "um") 
-}
-
-func removeVerbEnding(word string, ending string) string {
-	if len(word) < len(ending) {
-		return word
-	}
-
-	return word[:len(word)-len(ending)]
 }

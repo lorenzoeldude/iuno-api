@@ -1,20 +1,21 @@
 package models
 
 type Form struct {
-	Form string `json:"form"`
-	Part string `json:"part"`
+	ID                int `json:"id"`
+	LemmaID           int `json:"lemma_id"`
+	Form              string `json:"form"`
+	FormNormalized    string `json:"form_normalized"`
 
-	// shared
-	Number string `json:"number"`
+	PartOfSpeech      string `json:"part_of_speech"`
+	Number            string `json:"number"`
 
 	// nouns/adjectives
-	Case string `json:"case"`
-	Gender string `json:"gender"`
+	GrammaticalCase   *string `json:"grammatical_case"`
+	Gender            *string `json:"gender"`
 
 	// verbs
-	Person int `json:"person"`
-	Tense string `json:"tense"`
-	Mood string `json:"mood"`
-	Voice string `json:"voice"`
-	NonFinite string `json:"non_finite"`
+	Tense             *string `json:"tense"`
+	Mood              *string `json:"mood"`
+	Voice             *string `json:"voice"`
+	Person            *int `json:"person"`
 }

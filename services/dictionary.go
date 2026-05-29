@@ -6,46 +6,44 @@ import (
 
 	"iuno-api/db"
 	"iuno-api/models"
-	"iuno-api/services/morphology"
+	// "iuno-api/services/morphology"
 )
 
-func GetWord(slug string) (models.DictionaryResponse, error) {
+func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 
 	var lemma models.Lemma
 
-	log.Println("LOOKUP:", slug)
+	log.Println("LOOKUP:", lemma_normalized)
 
 	err := db.Pool.QueryRow(context.Background(), `
 		SELECT
 			id,
-			slug,
 			lemma,
-			type,
-			definition,
+			lemma_normalized,
+			part_of_speech,
 			gender,
 			declension,
+			genitive,
 			conjugation,
 			perfect,
 			supine,
-			irregular,
-			genitive,
-			infinitive
+			infinitive,
+			irregular
 		FROM lemmas
-		WHERE LOWER(slug) = LOWER($1)
-	`, slug).Scan(
+		WHERE LOWER(lemma_normalized) = LOWER($1)
+	`, lemma_normalized).Scan(
 		&lemma.ID,
-		&lemma.Slug,
 		&lemma.Lemma,
-		&lemma.Type,
-		&lemma.Definition,
+		&lemma.LemmaNormalized,
+		&lemma.PartOfSpeech,
 		&lemma.Gender,
 		&lemma.Declension,
+		&lemma.Genitive,
 		&lemma.Conjugation,
 		&lemma.Perfect,
 		&lemma.Supine,
-		&lemma.Irregular,
-		&lemma.Genitive,
 		&lemma.Infinitive,
+		&lemma.Irregular,
 	)
 
 	if err != nil {
@@ -53,13 +51,65 @@ func GetWord(slug string) (models.DictionaryResponse, error) {
 		return models.DictionaryResponse{}, err
 	}
 
-	log.Println("FOUND:", lemma.Lemma)
+	// log.Println("FOUND:", lemma.Lemma)
 
-	// Generate Morphology
-	forms := morphology.Generate(lemma)
+	// Get Forms
+	formRows, err := db.Pool.Query(context.Background(), `
+		SELECT
+			id,
+			lemma_id,
+			form,
+			form_normalized,
+			part_of_speech,
+			grammatical_case,
+			number,
+			gender,
+			tense,
+			mood,
+			voice,
+			person
+		FROM forms
+		WHERE lemma_id = $1
+	`, lemma.ID)
+
+	if err != nil {
+		log.Println("FORMS ERROR:", err)
+		return models.DictionaryResponse{}, err
+	}
+
+	defer formRows.Close()
+
+	var forms []models.Form
+
+	for formRows.Next() {
+
+		var form models.Form
+
+		err := formRows.Scan(
+			&form.ID,
+			&form.LemmaID,
+			&form.Form,
+			&form.FormNormalized,
+			&form.PartOfSpeech,
+			&form.GrammaticalCase,
+			&form.Number,
+			&form.Gender,
+			&form.Tense,
+			&form.Mood,
+			&form.Voice,
+			&form.Person,
+		)
+
+		if err != nil {
+			log.Println("FORM SCAN ERROR:", err)
+			continue
+		}
+
+		forms = append(forms, form)
+	}
 
 	// Get Examples
-	rows, err := db.Pool.Query(context.Background(), `
+	exampleRows, err := db.Pool.Query(context.Background(), `
 		SELECT id, latin
 		FROM examples
 		WHERE lemma_id = $1
@@ -71,15 +121,15 @@ func GetWord(slug string) (models.DictionaryResponse, error) {
 		return models.DictionaryResponse{}, err
 	}
 
-	defer rows.Close()
+	defer exampleRows.Close()
 
 	var examples []models.Example
 
-	for rows.Next() {
+	for exampleRows.Next() {
 
 		var ex models.Example
 
-		err := rows.Scan(
+		err := exampleRows.Scan(
 			&ex.ID,
 			&ex.Latin,
 		)
@@ -94,7 +144,7 @@ func GetWord(slug string) (models.DictionaryResponse, error) {
 
 
 	// Get Meanings
-	rows, err = db.Pool.Query(context.Background(), `
+	meaningRows, err := db.Pool.Query(context.Background(), `
 		SELECT id, meaning
 		FROM meanings
 		WHERE lemma_id = $1
@@ -105,15 +155,15 @@ func GetWord(slug string) (models.DictionaryResponse, error) {
 		return models.DictionaryResponse{}, err
 	}
 
-	defer rows.Close()
+	defer meaningRows.Close()
 
 	var meanings []models.Meaning
 
-	for rows.Next() {
+	for meaningRows.Next() {
 
 		var m models.Meaning
 
-		err := rows.Scan(
+		err := meaningRows.Scan(
 			&m.ID,
 			&m.English,
 		)

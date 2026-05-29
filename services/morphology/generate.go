@@ -4,13 +4,8 @@ import "iuno-api/models"
 
 func Generate(lemma models.Lemma,) []models.Form {
 
-	// IRREGULAR OVERRIDE
-	if lemma.Irregular {
-		return getIrregularForms(lemma)
-	}
-
 	// REGULAR SYSTEMS
-	switch lemma.Type {
+	switch lemma.PartOfSpeech {
 
 		case "noun":
 			return GenerateNoun(lemma)
@@ -21,8 +16,6 @@ func Generate(lemma models.Lemma,) []models.Form {
 		case "adjective":
 			return GenerateAdjective(lemma)
 
-		case "pronoun":
-			return GeneratePronoun(lemma)
 	}
 
 	return []models.Form{}

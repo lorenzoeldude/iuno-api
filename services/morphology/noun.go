@@ -316,27 +316,16 @@ func buildNounForms(
 
 
 			forms = append(forms, models.Form{
+				LemmaID: lemma.ID,
 				Form:   form,
-				Part:   "noun",
-				Case:   c,
+				FormNormalized: NormalizeLatin(form),
+				PartOfSpeech:   "noun",
+				GrammaticalCase:   &c,
 				Number: number,
-				Gender: *lemma.Gender,
+				Gender: lemma.Gender,
 			})
 		}
 	}
 
 	return forms
-}
-
-//
-// =====================================================
-// HELPERS
-// =====================================================
-//
-
-func removeEnding(lemma string, ending string) string {
-	if len(lemma) < len(ending) {
-		return lemma
-	}
-	return lemma[:len(lemma)-len(ending)]
 }
