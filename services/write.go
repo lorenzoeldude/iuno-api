@@ -11,7 +11,8 @@ import (
 
 func WriteWord(body models.WriteRequest) error {
 
-	// log.Println("lemma: ", body.Lemma)
+	log.Println("lemma: ", body.Lemma.Lemma)
+	log.Println("lemma: ", *body.Lemma.Supine)
 
 	lemma := body.Lemma
 
@@ -60,7 +61,11 @@ func WriteWord(body models.WriteRequest) error {
 		return err
 	}
 
+	log.Println("forms ->")
+
 	forms := morphology.Generate(lemma)
+
+	log.Println("generated forms:", len(forms))
 
 	for _, form := range forms {
 
@@ -96,6 +101,7 @@ func WriteWord(body models.WriteRequest) error {
 		)
 
 		if err != nil {
+			log.Println("error inserting forms", err)
 			return err
 		}
 	}
@@ -125,7 +131,60 @@ func WriteWord(body models.WriteRequest) error {
 
 		if err != nil {
 			log.Println("MEANING INSERT ERROR:", err)
-			// http.Error(w, "failed to insert meanings", http.StatusInternalServerError)
+			return err
+		}
+	}
+
+	// INSERT EXAMPLES
+	for _, m := range body.Examples {
+
+		if m == "" {
+			continue
+		}
+
+		_, err := tx.Exec(ctx, `
+			INSERT INTO examples (lemma_id, example)
+			VALUES ($1, $2)
+		`, lemma.ID, m)
+
+		if err != nil {
+			log.Println("EXAMPLE INSERT ERROR:", err)
+			return err
+		}
+	}
+
+	// INSERT DEFINITIONS
+	for _, m := range body.Definitions {
+
+		if m == "" {
+			continue
+		}
+
+		_, err := tx.Exec(ctx, `
+			INSERT INTO definitions (lemma_id, definition)
+			VALUES ($1, $2)
+		`, lemma.ID, m)
+
+		if err != nil {
+			log.Println("DEFINITIONS INSERT ERROR:", err)
+			return err
+		}
+	}
+
+	// INSERT DERIVATIVES
+	for _, m := range body.Derivatives {
+
+		if m == "" {
+			continue
+		}
+
+		_, err := tx.Exec(ctx, `
+			INSERT INTO derivatives (lemma_id, derivative)
+			VALUES ($1, $2)
+		`, lemma.ID, m)
+
+		if err != nil {
+			log.Println("DERIVATIVES INSERT ERROR:", err)
 			return err
 		}
 	}

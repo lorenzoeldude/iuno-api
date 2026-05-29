@@ -110,7 +110,7 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 
 	// Get Examples
 	exampleRows, err := db.Pool.Query(context.Background(), `
-		SELECT id, latin
+		SELECT id, example
 		FROM examples
 		WHERE lemma_id = $1
 		ORDER BY id ASC
@@ -165,7 +165,7 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 
 		err := meaningRows.Scan(
 			&m.ID,
-			&m.English,
+			&m.Meaning,
 		)
 
 		if err != nil {
@@ -176,12 +176,86 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 		meanings = append(meanings, m)
 	}
 
+	// Get Definitions
+	definitionRows, err := db.Pool.Query(context.Background(), `
+		SELECT id, definition
+		FROM definitions
+		WHERE lemma_id = $1
+		ORDER BY sort_order ASC
+	`, lemma.ID)
+
+	if err != nil {
+		return models.DictionaryResponse{}, err
+	}
+
+	defer definitionRows.Close()
+
+	var definitions []models.Definition
+
+	for definitionRows.Next() {
+
+		var m models.Definition
+
+		err := definitionRows.Scan(
+			&m.ID,
+			&m.Definition,
+		)
+
+		if err != nil {
+			log.Println("SCAN ERROR:", err)
+			continue
+		}
+
+		definitions = append(definitions, m)
+	}
+
+	// Get Definitions
+	derivativeRows, err := db.Pool.Query(context.Background(), `
+		SELECT id, derivative
+		FROM derivatives
+		WHERE lemma_id = $1
+		ORDER BY sort_order ASC
+	`, lemma.ID)
+
+	if err != nil {
+		log.Println("derivative error: ", err)
+		return models.DictionaryResponse{}, err
+	}
+
+	defer derivativeRows.Close()
+
+	var derivatives []models.Derivative
+
+	for derivativeRows.Next() {
+
+		var m models.Derivative
+
+		err := derivativeRows.Scan(
+			&m.ID,
+			&m.Derivative,
+		)
+
+		if err != nil {
+			log.Println("SCAN ERROR:", err)
+			continue
+		}
+
+		derivatives = append(derivatives, m)
+	}
+	
+// 	if err := derivativeRows.Err(); err != nil {
+//     log.Println("ROWS ERROR:", err)
+// }
+	log.Println("derivatives; ", derivatives)
+
 	// RESPONSE
 	response := models.DictionaryResponse{
 		Lemma:     lemma,
 		Forms:    forms,
 		Examples: examples,
 		Meanings: meanings,
+		Definitions: definitions,
+		Derivatives: derivatives,
 	}
 
 	return response, nil
