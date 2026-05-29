@@ -5,10 +5,6 @@ import "iuno-api/models"
 //
 // IRREGULAR VERB SYSTEM
 //
-// Latin has several highly irregular verbs
-// that cannot be generated from normal
-// conjugation rules.
-//
 
 func getIrregularForms(lemma models.Lemma) []models.Form {
 

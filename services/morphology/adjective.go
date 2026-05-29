@@ -26,11 +26,7 @@ func generateFirstSecondDeclensionAdjective(
 	lemma models.Lemma,
 ) []models.Form {
 
-	stem := lemma.Lemma
-
-	if stem == "" {
-		stem = removeEnding(lemma.Lemma, "us")
-	}
+	stem := removeEnding(*lemma.Genitive, "ī")
 
 	var forms []models.Form
 
@@ -65,20 +61,20 @@ func buildMasculineAdjectiveForms(
 
 		"singular": {
 			"nominative": "us",
-			"genitive":   "i",
-			"dative":     "o",
+			"genitive":   "ī",
+			"dative":     "ō",
 			"accusative": "um",
-			"ablative":   "o",
+			"ablative":   "ō",
 			"vocative":   "e",
 		},
 
 		"plural": {
-			"nominative": "i",
-			"genitive":   "orum",
-			"dative":     "is",
-			"accusative": "os",
-			"ablative":   "is",
-			"vocative":   "i",
+			"nominative": "ī",
+			"genitive":   "ōrum",
+			"dative":     "īs",
+			"accusative": "ōs",
+			"ablative":   "īs",
+			"vocative":   "ī",
 		},
 	}
 
@@ -105,16 +101,16 @@ func buildFeminineAdjectiveForms(
 			"genitive":   "ae",
 			"dative":     "ae",
 			"accusative": "am",
-			"ablative":   "a",
+			"ablative":   "ā",
 			"vocative":   "a",
 		},
 
 		"plural": {
 			"nominative": "ae",
-			"genitive":   "arum",
-			"dative":     "is",
-			"accusative": "as",
-			"ablative":   "is",
+			"genitive":   "ārum",
+			"dative":     "īs",
+			"accusative": "ās",
+			"ablative":   "īs",
 			"vocative":   "ae",
 		},
 	}
@@ -139,19 +135,19 @@ func buildNeuterAdjectiveForms(
 
 		"singular": {
 			"nominative": "um",
-			"genitive":   "i",
-			"dative":     "o",
+			"genitive":   "ī",
+			"dative":     "ō",
 			"accusative": "um",
-			"ablative":   "o",
+			"ablative":   "ō",
 			"vocative":   "um",
 		},
 
 		"plural": {
 			"nominative": "a",
-			"genitive":   "orum",
-			"dative":     "is",
+			"genitive":   "ōrum",
+			"dative":     "īs",
 			"accusative": "a",
-			"ablative":   "is",
+			"ablative":   "īs",
 			"vocative":   "a",
 		},
 	}

@@ -7,22 +7,6 @@ import (
 //
 // VERB MORPHOLOGY ENGINE
 //
-// Supports:
-// - 1st conjugation
-// - Indicative
-// - Subjunctive
-// - Active voice
-// - Present system + Perfect system
-//
-
-// type VerbForm struct {
-// 	Form   string
-// 	Person string
-// 	Number string
-// 	Tense  string
-// 	Mood   string
-// 	Voice  string
-// }
 
 func GenerateVerb(lemma models.Lemma) []models.Form {
 
@@ -750,6 +734,31 @@ func generateFirstConjugation(lemma models.Lemma) []models.Form {
 			Number: "plural",
 			Tense:  "pluperfect",
 			Mood:   "subjunctive",
+			Voice:  "passive",
+		},
+	)
+
+	//
+	// PRESENT PASSIVE IMPERATIVE
+	//
+
+	forms = append(forms,
+		models.Form{
+			Form:   presentStem + "āre",
+			Part:   "verb",
+			Person: 2,
+			Number: "singular",
+			Tense:  "present",
+			Mood:   "imperative",
+			Voice:  "passive",
+		},
+		models.Form{
+			Form:   presentStem + "āminī",
+			Part:   "verb",
+			Person: 2,
+			Number: "plural",
+			Tense:  "present",
+			Mood:   "imperative",
 			Voice:  "passive",
 		},
 	)
