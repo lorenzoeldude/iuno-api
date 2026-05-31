@@ -29,7 +29,7 @@ func main() {
 	// =====================================================
 	// SEARCH
 	// =====================================================
-	http.HandleFunc("/api/search", handlers.SearchHandler)
+	http.HandleFunc("/api/search", handlers.SearchFormHandler)
 
 	// =====================================================
 	// TRAINER

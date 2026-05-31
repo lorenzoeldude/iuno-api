@@ -69,6 +69,8 @@ func WriteWord(body models.WriteRequest) error {
 
 	for _, form := range forms {
 
+		// form.FormNormalized := morphology.NormalizeLatin(form.Form)
+
 		_, err := tx.Exec(ctx, `
 			INSERT INTO forms (
 				lemma_id,
@@ -89,7 +91,7 @@ func WriteWord(body models.WriteRequest) error {
 		`,
 			lemma.ID,
 			form.Form,
-			form.FormNormalized,
+			morphology.NormalizeLatin(form.Form),
 			form.PartOfSpeech,
 			form.GrammaticalCase,
 			form.Number,

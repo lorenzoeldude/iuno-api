@@ -4,6 +4,20 @@ import (
 	"iuno-api/models"
 )
 
+func infinitiveForm(
+    form string,
+    tense string,
+    voice string,
+) models.Form {
+    return models.Form{
+        Form: form,
+        PartOfSpeech: "verb",
+        Tense: StringPtr(tense),
+        Mood: StringPtr("infinitive"),
+        Voice: StringPtr(voice),
+    }
+}
+
 //
 // VERB MORPHOLOGY ENGINE
 //
@@ -30,6 +44,23 @@ func generateFirstConjugation(lemma models.Lemma) []models.Form {
 
 	presentStem := removeVerbEnding(*lemma.Infinitive, "āre")
 	perfectStem := removeVerbEnding(*lemma.Perfect, "ī")
+
+	/// PPP stem
+	ppp := pppStem(*lemma.Supine)
+
+	// Active Infinitives
+	forms = append(forms,
+		infinitiveForm(presentStem+"āre", "present", "active"),
+		infinitiveForm(perfectStem+"isse", "perfect", "active"),
+		infinitiveForm(ppp+"ūrus esse", "future", "active"),
+	)
+
+	// Passive Infinitives
+	forms = append(forms,
+		infinitiveForm(presentStem+"ārī", "present", "passive"),
+		infinitiveForm(ppp+"um esse", "perfect", "passive"),
+		infinitiveForm(ppp+"um īrī", "future", "passive"),
+	)
 
 	//
 	// PRESENT ACTIVE INDICATIVE
@@ -301,6 +332,49 @@ func generateFirstConjugation(lemma models.Lemma) []models.Form {
 	)
 
 	//
+	// FUTURE ACTIVE IMPERATIVE
+	//
+
+	forms = append(forms,
+		models.Form{
+			Form: presentStem + "ātō",
+			PartOfSpeech: "verb",
+			Person: IntPtr(2),
+			Number: "singular",
+			Tense: StringPtr("future"),
+			Mood: StringPtr("imperative"),
+			Voice: StringPtr("active"),
+		},
+		models.Form{
+			Form: presentStem + "ātōte",
+			PartOfSpeech: "verb",
+			Person: IntPtr(2),
+			Number: "plural",
+			Tense: StringPtr("future"),
+			Mood: StringPtr("imperative"),
+			Voice: StringPtr("active"),
+		},
+		models.Form{
+			Form: presentStem + "ātō",
+			PartOfSpeech: "verb",
+			Person: IntPtr(3),
+			Number: "singular",
+			Tense: StringPtr("future"),
+			Mood: StringPtr("imperative"),
+			Voice: StringPtr("active"),
+		},
+		models.Form{
+			Form: presentStem + "antō",
+			PartOfSpeech: "verb",
+			Person: IntPtr(3),
+			Number: "plural",
+			Tense: StringPtr("future"),
+			Mood: StringPtr("imperative"),
+			Voice: StringPtr("active"),
+		},
+	)
+
+	//
 	// PRESENT PASSIVE INDICATIVE
 	//
 	forms = append(forms, buildVerbForms(
@@ -371,9 +445,6 @@ func generateFirstConjugation(lemma models.Lemma) []models.Form {
 		"passive",
 	)...)
 
-	/// PPP stem
-	ppp := pppStem(*lemma.Supine)
-
 	//
 	// PERFECT PASSIVE INDICATIVE
 	//
@@ -382,14 +453,14 @@ func generateFirstConjugation(lemma models.Lemma) []models.Form {
 		ppp,
 		map[string]map[string]string{
 			"singular": {
-				"first":  "us sum",
-				"second": "us es",
-				"third":  "us est",
+				"first":  "sum",
+				"second": "es",
+				"third":  "est",
 			},
 			"plural": {
-				"first":  "ī sumus",
-				"second": "ī estis",
-				"third":  "ī sunt",
+				"first":  "sumus",
+				"second": "estis",
+				"third":  "sunt",
 			},
 		},
 		"perfect",
@@ -403,14 +474,14 @@ func generateFirstConjugation(lemma models.Lemma) []models.Form {
 		ppp,
 		map[string]map[string]string{
 			"singular": {
-				"first":  "us eram",
-				"second": "us erās",
-				"third":  "us erat",
+				"first":  "eram",
+				"second": "erās",
+				"third":  "erat",
 			},
 			"plural": {
-				"first":  "ī erāmus",
-				"second": "ī erātis",
-				"third":  "ī erant",
+				"first":  "erāmus",
+				"second": "erātis",
+				"third":  "erant",
 			},
 		},
 		"pluperfect",
@@ -424,14 +495,14 @@ func generateFirstConjugation(lemma models.Lemma) []models.Form {
 		ppp,
 		map[string]map[string]string{
 			"singular": {
-				"first":  "us erō",
-				"second": "us eris",
-				"third":  "us erit",
+				"first":  "erō",
+				"second": "eris",
+				"third":  "erit",
 			},
 			"plural": {
-				"first":  "ī erimus",
-				"second": "ī eritis",
-				"third":  "ī erunt",
+				"first":  "erimus",
+				"second": "eritis",
+				"third":  "erunt",
 			},
 		},
 		"future perfect",
@@ -494,14 +565,14 @@ func generateFirstConjugation(lemma models.Lemma) []models.Form {
 		ppp,
 		map[string]map[string]string{
 			"singular": {
-				"first":  "us sim",
-				"second": "us sīs",
-				"third":  "us sit",
+				"first":  "sim",
+				"second": "sīs",
+				"third":  "sit",
 			},
 			"plural": {
-				"first":  "ī sīmus",
-				"second": "ī sītis",
-				"third":  "ī sint",
+				"first":  "sīmus",
+				"second": "sītis",
+				"third":  "sint",
 			},
 		},
 		"perfect",
@@ -515,14 +586,14 @@ func generateFirstConjugation(lemma models.Lemma) []models.Form {
 		ppp,
 		map[string]map[string]string{
 			"singular": {
-				"first":  "us essem",
-				"second": "us essēs",
-				"third":  "us esset",
+				"first":  "essem",
+				"second": "essēs",
+				"third":  "esset",
 			},
 			"plural": {
-				"first":  "ī essēmus",
-				"second": "ī essētis",
-				"third":  "ī essent",
+				"first":  "essēmus",
+				"second": "essētis",
+				"third":  "essent",
 			},
 		},
 		"pluperfect",
@@ -639,7 +710,15 @@ func buildPerfectPassiveForms(
 				key = "third"
 			}
 
-			form := ppp + "us " + sumForms[number][key]
+			var ending string
+
+			if number == "singular" {
+				ending = "us"
+			} else {
+				ending = "ī"
+			}
+
+			form := ppp + ending + " " + sumForms[number][key]
 
 			forms = append(forms,
 				verbForm(
