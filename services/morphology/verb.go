@@ -625,6 +625,49 @@ func generateFirstConjugation(lemma models.Lemma) []models.Form {
 		},
 	)
 
+	//
+	// FUTURE PASSIVE IMPERATIVE
+	//
+
+	forms = append(forms,
+		models.Form{
+			Form: presentStem + "ātor",
+			PartOfSpeech: "verb",
+			Person: IntPtr(2),
+			Number: "singular",
+			Tense: StringPtr("future"),
+			Mood: StringPtr("imperative"),
+			Voice: StringPtr("passive"),
+		},
+		models.Form{
+			Form: presentStem + "āminī",
+			PartOfSpeech: "verb",
+			Person: IntPtr(2),
+			Number: "plural",
+			Tense: StringPtr("future"),
+			Mood: StringPtr("imperative"),
+			Voice: StringPtr("passive"),
+		},
+		models.Form{
+			Form: presentStem + "ātor",
+			PartOfSpeech: "verb",
+			Person: IntPtr(3),
+			Number: "singular",
+			Tense: StringPtr("future"),
+			Mood: StringPtr("imperative"),
+			Voice: StringPtr("passive"),
+		},
+		models.Form{
+			Form: presentStem + "antor",
+			PartOfSpeech: "verb",
+			Person: IntPtr(3),
+			Number: "plural",
+			Tense: StringPtr("future"),
+			Mood: StringPtr("imperative"),
+			Voice: StringPtr("passive"),
+		},
+	)
+
 	return forms
 }
 
