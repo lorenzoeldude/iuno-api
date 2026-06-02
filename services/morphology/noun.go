@@ -6,9 +6,7 @@ import (
 )
 
 //
-// NOUN MORPHOLOGY ENGINE (FULL SYSTEM)
-// Supports:
-// 1st, 2nd, 3rd, 4th, 5th declensions
+// NOUN MORPHOLOGY ENGINE
 //
 
 func GenerateNoun(lemma models.Lemma) []models.Form {

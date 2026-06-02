@@ -4,20 +4,6 @@ import (
 	"iuno-api/models"
 )
 
-func infinitiveForm(
-    form string,
-    tense string,
-    voice string,
-) models.Form {
-    return models.Form{
-        Form: form,
-        PartOfSpeech: "verb",
-        Tense: StringPtr(tense),
-        Mood: StringPtr("infinitive"),
-        Voice: StringPtr(voice),
-    }
-}
-
 //
 // VERB MORPHOLOGY ENGINE
 //
@@ -61,6 +47,93 @@ func generateFirstConjugation(lemma models.Lemma) []models.Form {
 		infinitiveForm(ppp+"um esse", "perfect", "passive"),
 		infinitiveForm(ppp+"um īrī", "future", "passive"),
 	)
+
+	// GERUND
+	forms = append(forms, buildGerundForms(presentStem)...)
+
+	// GERUNDIVE
+	gerundiveStem := buildGerundiveStem(lemma)
+
+	var gerundiveForms []models.Form
+
+	gerundiveForms = append(
+		gerundiveForms,
+		buildMasculineAdjectiveForms(lemma, gerundiveStem)...,
+	)
+
+	gerundiveForms = append(
+		gerundiveForms,
+		buildFeminineAdjectiveForms(lemma, gerundiveStem)...,
+	)
+
+	gerundiveForms = append(
+		gerundiveForms,
+		buildNeuterAdjectiveForms(lemma, gerundiveStem)...,
+	)
+
+	mood := "gerundive"
+
+	for i := range gerundiveForms {
+		gerundiveForms[i].PartOfSpeech = "verb"
+		gerundiveForms[i].Mood = &mood
+	}
+
+	forms = append(forms, gerundiveForms...)
+
+	// PRESENT PASSIVE PARTICIPLE
+
+
+
+	// PERFECT PASSIVE PARTICIPLE
+	var pppForms []models.Form
+
+	pppForms = append(
+		pppForms,
+		buildMasculineAdjectiveForms(lemma, ppp)...,
+	)
+
+	pppForms = append(
+		pppForms,
+		buildFeminineAdjectiveForms(lemma, ppp)...,
+	)
+
+	pppForms = append(
+		pppForms,
+		buildNeuterAdjectiveForms(lemma, ppp)...,
+	)
+
+	markAsParticiple(pppForms, "perfect", "passive",)
+
+	forms = append(forms, pppForms...)
+
+	// FUTURE ACTIVE PARTICIPLE
+	var fapForms []models.Form
+
+	futureActiveStem := ppp + "ūr"
+
+	fapForms = append(
+		fapForms,
+		buildMasculineAdjectiveForms(lemma, futureActiveStem)...,
+	)
+
+	fapForms = append(
+		fapForms,
+		buildFeminineAdjectiveForms(lemma, futureActiveStem)...,
+	)
+
+	fapForms = append(
+		fapForms,
+		buildNeuterAdjectiveForms(lemma, futureActiveStem)...,
+	)
+
+	markAsParticiple(
+		fapForms,
+		"future",
+		"active",
+	)
+
+	forms = append(forms, fapForms...)
+
 
 	//
 	// PRESENT ACTIVE INDICATIVE
@@ -777,4 +850,67 @@ func buildPerfectPassiveForms(
 	}
 
 	return forms
+}
+
+func buildGerundForms(presentStem string) []models.Form {
+
+	base := presentStem + "and"
+
+	return []models.Form{
+		{
+			Form:         base + "ī",
+			PartOfSpeech: "verb",
+			GrammaticalCase: StringPtr("genitive"),
+			Number:       "singular",
+			Mood:         StringPtr("gerund"),
+		},
+		{
+			Form:         base + "ō",
+			PartOfSpeech: "verb",
+			GrammaticalCase: StringPtr("dative"),
+			Number:       "singular",
+			Mood:         StringPtr("gerund"),
+		},
+		{
+			Form:         base + "um",
+			PartOfSpeech: "verb",
+			GrammaticalCase: StringPtr("accusative"),
+			Number:       "singular",
+			Mood:         StringPtr("gerund"),
+		},
+		{
+			Form:         base + "ō",
+			PartOfSpeech: "verb",
+			GrammaticalCase: StringPtr("ablative"),
+			Number:       "singular",
+			Mood:         StringPtr("gerund"),
+		},
+	}
+}
+
+func markAsParticiple(
+    forms []models.Form,
+    tense string,
+    voice string,
+) {
+    for i := range forms {
+        forms[i].PartOfSpeech = "verb"
+        forms[i].Mood = StringPtr("participle")
+        forms[i].Tense = StringPtr(tense)
+        forms[i].Voice = StringPtr(voice)
+    }
+}
+
+func infinitiveForm(
+    form string,
+    tense string,
+    voice string,
+) models.Form {
+    return models.Form{
+        Form: form,
+        PartOfSpeech: "verb",
+        Tense: StringPtr(tense),
+        Mood: StringPtr("infinitive"),
+        Voice: StringPtr(voice),
+    }
 }

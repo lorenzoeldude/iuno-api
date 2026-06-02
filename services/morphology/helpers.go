@@ -2,13 +2,14 @@ package morphology
 
 import (
 	"iuno-api/models"
+	"strings"
 )
 
-func removeEnding(lemma string, ending string) string {
-	if len(lemma) < len(ending) {
-		return lemma
-	}
-	return lemma[:len(lemma)-len(ending)]
+func removeEnding(word string, ending string) string {
+    if strings.HasSuffix(word, ending) {
+        return strings.TrimSuffix(word, ending)
+    }
+    return word
 }
 
 func pppStem(supine string) string {
@@ -21,6 +22,31 @@ func removeVerbEnding(word string, ending string) string {
 	}
 
 	return word[:len(word)-len(ending)]
+}
+
+func buildGerundiveStem(lemma models.Lemma) string {
+
+    infinitive := *lemma.Infinitive
+
+    switch *lemma.Conjugation {
+
+    case 1:
+        return removeEnding(infinitive, "āre") + "and"
+
+    case 2:
+        return removeEnding(infinitive, "re") + "nd"
+
+    case 3:
+        return removeEnding(infinitive, "ere") + "end"
+
+    case 34: // if you use 34 for 3rd-io
+        return removeEnding(infinitive, "re") + "end"
+
+    case 4:
+        return removeEnding(infinitive, "re") + "end"
+    }
+
+    return ""
 }
 
 func StringPtr(s string) *string {

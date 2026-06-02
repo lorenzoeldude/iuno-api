@@ -13,6 +13,9 @@ type Form struct {
 	GrammaticalCase   *string `json:"grammatical_case"`
 	Gender            *string `json:"gender"`
 
+	// adjectives
+	Degree			  *string `json:"degree"`
+
 	// verbs
 	Tense             *string `json:"tense"`
 	Mood              *string `json:"mood"`

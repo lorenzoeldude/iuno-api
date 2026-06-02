@@ -83,10 +83,11 @@ func WriteWord(body models.WriteRequest) error {
 				tense,
 				mood,
 				voice,
-				person
+				person,
+				degree
 			)
 			VALUES (
-				$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11
+				$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12
 			)
 		`,
 			lemma.ID,
@@ -100,6 +101,7 @@ func WriteWord(body models.WriteRequest) error {
 			form.Mood,
 			form.Voice,
 			form.Person,
+			form.Degree,
 		)
 
 		if err != nil {

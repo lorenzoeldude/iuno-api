@@ -67,7 +67,8 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 			tense,
 			mood,
 			voice,
-			person
+			person,
+			degree
 		FROM forms
 		WHERE lemma_id = $1
 	`, lemma.ID)
@@ -98,12 +99,15 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 			&form.Mood,
 			&form.Voice,
 			&form.Person,
+			&form.Degree,
 		)
 
 		if err != nil {
 			log.Println("FORM SCAN ERROR:", err)
 			continue
 		}
+
+		// log.Println("Gender: ", *form.Gender)
 
 		forms = append(forms, form)
 	}
@@ -209,7 +213,7 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 		definitions = append(definitions, m)
 	}
 
-	// Get Definitions
+	// Get Derivatives
 	derivativeRows, err := db.Pool.Query(context.Background(), `
 		SELECT id, derivative
 		FROM derivatives
