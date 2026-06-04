@@ -3,6 +3,7 @@ package morphology
 import (
 	// "log"
 	"iuno-api/models"
+	"strings"
 )
 
 func GenerateAdjective(lemma models.Lemma) []models.Form {
@@ -11,22 +12,28 @@ func GenerateAdjective(lemma models.Lemma) []models.Form {
 		return []models.Form{}
 	}
 
+	var forms []models.Form
+
+	var stem string
+
 	switch *lemma.Declension {
 
 	case 12:
-		return generateFirstSecondDeclensionAdjective(lemma)
+		stem = removeEnding(*lemma.Genitive, "ī")
+		forms = append(forms,
+            generateFirstSecondDeclensionAdjective(lemma, stem)...)
 
 	case 31, 32, 33: 
-		return generateThirdDeclensionAdjective(lemma)
-
-	// case 32:
-	// 	return generateThirdDeclensionTwoTerminationAdjective(lemma)
-
-	// case 33:
-	// 	return generateThirdDeclensionThreeTerminationAdjective(lemma)
+		stem = removeEnding(*lemma.Genitive, "is")
+		forms = append(forms,
+            generateThirdDeclensionAdjective(lemma, stem)...)
 	}
 
-	return []models.Form{}
+	forms = append(forms, buildComparativeForms(stem)...)
+
+	forms = append(forms, buildSuperlativeForms(stem, lemma.Lemma)...)
+
+	return forms
 }
 
 // =====================================================
@@ -35,9 +42,10 @@ func GenerateAdjective(lemma models.Lemma) []models.Form {
 
 func generateFirstSecondDeclensionAdjective(
 	lemma models.Lemma,
+	stem string,
 ) []models.Form {
 
-	stem := removeEnding(*lemma.Genitive, "ī")
+	// stem := removeEnding(*lemma.Genitive, "ī")
 
 	var forms []models.Form
 
@@ -55,10 +63,6 @@ func generateFirstSecondDeclensionAdjective(
 		forms,
 		buildNeuterAdjectiveForms(lemma, stem)...,
 	)
-	
-	forms = append(forms, buildComparativeForms(stem)...)
-
-	forms = append(forms, buildSuperlativeForms(stem)...)
 
 	return forms
 }
@@ -180,24 +184,6 @@ func buildNeuterAdjectiveForms(
 
 func generateThirdDeclensionAdjective(
 	lemma models.Lemma,
-) []models.Form {
-
-	stem := removeEnding(*lemma.Genitive, "is")
-
-	switch *lemma.Declension {
-		case 31:
-			return buildThirdDeclensionOneTerminationForms(lemma, stem)
-		// case 32:
-		// 	return buildThirdDeclensionTwoTerminationForms(lemma, stem)
-		// case 33:
-		// 	return buildThirdDeclensionThreeTerminationForms(lemma, stem)
-	}
-
-	return []models.Form{}
-}
-
-func buildThirdDeclensionOneTerminationForms(
-	lemma models.Lemma,
 	stem string,
 ) []models.Form {
 
@@ -206,16 +192,27 @@ func buildThirdDeclensionOneTerminationForms(
 		"singular": {
 			"genitive":   "is",
 			"dative":     "ī",
+
+			// masculine/feminine only
 			"accusative": "em",
-			"ablative":   "ī",
+
+			"ablative": "ī",
 		},
 
 		"plural": {
+			// masculine/feminine only
 			"nominative": "ēs",
-			"genitive":   "ium",
-			"dative":     "ibus",
+
+			"genitive": "ium",
+			"dative":   "ibus",
+
+			// masculine/feminine only
 			"accusative": "ēs",
-			"ablative":   "ibus",
+
+			"ablative": "ibus",
+
+			// masculine/feminine only
+			"vocative": "ēs",
 		},
 	}
 
@@ -223,17 +220,32 @@ func buildThirdDeclensionOneTerminationForms(
 
 	forms = append(
 		forms,
-		buildThirdDeclensionForms(lemma, stem, "masculine", endings)...,
+		buildThirdDeclensionForms(
+			lemma,
+			stem,
+			"masculine",
+			endings,
+		)...,
 	)
 
 	forms = append(
 		forms,
-		buildThirdDeclensionForms(lemma, stem, "feminine", endings)...,
+		buildThirdDeclensionForms(
+			lemma,
+			stem,
+			"feminine",
+			endings,
+		)...,
 	)
 
 	forms = append(
 		forms,
-		buildThirdDeclensionForms(lemma, stem, "neuter", endings)...,
+		buildThirdDeclensionForms(
+			lemma,
+			stem,
+			"neuter",
+			endings,
+		)...,
 	)
 
 	return forms
@@ -263,28 +275,125 @@ func buildThirdDeclensionForms(
 	for _, number := range numbers {
 		for _, grammaticalCase := range cases {
 
-			if (number == "singular" && grammaticalCase == "nominative") {
+			// =====================================
+			// NOMINATIVE / VOCATIVE SINGULAR
+			// =====================================
+
+			if number == "singular" &&
+				(grammaticalCase == "nominative" ||
+					grammaticalCase == "vocative") {
+
+				var form string
+
+				switch *lemma.Declension {
+
+				// one termination
+				case 31:
+					form = lemma.Lemma
+
+				// two termination
+				case 32:
+
+					if gender == "neuter" {
+						form = *lemma.Neuter
+					} else {
+						form = lemma.Lemma
+					}
+
+				// three termination
+				case 33:
+
+					switch gender {
+					case "masculine":
+						form = lemma.Lemma
+
+					case "feminine":
+						form = *lemma.Feminine
+
+					case "neuter":
+						form = *lemma.Neuter
+					}
+				}
+
 				forms = append(forms, models.Form{
-					Form: lemma.Lemma,
+					Form: form,
 
 					PartOfSpeech: "adjective",
 
-					GrammaticalCase: StringPtr("nominative"),
-					Number: "singular",
-					Gender: &gender,
+					GrammaticalCase: &grammaticalCase,
+					Number:          number,
+					Gender:          &gender,
 
 					Degree: &degree,
 				})
+
+				continue
+			}
+
+			// =====================================
+			// NEUTER SPECIAL FORMS
+			// =====================================
+
+			if gender == "neuter" {
+
+				// neuter accusative singular
+				if number == "singular" &&
+					grammaticalCase == "accusative" {
+
+					forms = append(forms, models.Form{
+						Form: *lemma.Neuter,
+
+						PartOfSpeech: "adjective",
+
+						GrammaticalCase: &grammaticalCase,
+						Number:          number,
+						Gender:          &gender,
+
+						Degree: &degree,
+					})
+
+					continue
+				}
+
+				// neuter nominative/accusative/vocative plural
+				if number == "plural" &&
+					(grammaticalCase == "nominative" ||
+						grammaticalCase == "accusative" ||
+						grammaticalCase == "vocative") {
+
+					forms = append(forms, models.Form{
+						Form: stem + "ia",
+
+						PartOfSpeech: "adjective",
+
+						GrammaticalCase: &grammaticalCase,
+						Number:          number,
+						Gender:          &gender,
+
+						Degree: &degree,
+					})
+
+					continue
+				}
+			}
+
+			// =====================================
+			// REGULAR FORM
+			// =====================================
+
+			ending, ok := endings[number][grammaticalCase]
+			if !ok {
+				continue
 			}
 
 			forms = append(forms, models.Form{
-				Form: stem + endings[number][grammaticalCase],
+				Form: stem + ending,
 
 				PartOfSpeech: "adjective",
 
 				GrammaticalCase: &grammaticalCase,
-				Number: number,
-				Gender: &gender,
+				Number:          number,
+				Gender:          &gender,
 
 				Degree: &degree,
 			})
@@ -424,9 +533,16 @@ func buildComparativeGenderForms(
 	return forms
 }
 
-func buildSuperlativeForms(stem string) []models.Form {
+func buildSuperlativeForms(stem string, lemma string) []models.Form {
 
-	superlativeStem := stem + "issim"
+	var superlativeStem string
+
+	if strings.HasSuffix(lemma, "er") {
+		superlativeStem = lemma + "rim"
+	} else {
+		superlativeStem = stem
+	}
+
 
 	var forms []models.Form
 

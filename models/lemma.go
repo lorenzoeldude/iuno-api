@@ -11,6 +11,10 @@ type Lemma struct {
 	Declension *int `json:"declension"`
 	Genitive *string `json:"genitive"`
 
+	// ADJECTIVES
+	Feminine *string `json:"feminine"`
+	Neuter *string `json:"neuter"`
+
 	// VERBS
 	Conjugation *int `json:"conjugation"`
 	Perfect *string `json:"perfect"`

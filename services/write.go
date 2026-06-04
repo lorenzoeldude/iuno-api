@@ -36,10 +36,12 @@ func WriteWord(body models.WriteRequest) error {
 			supine,
 			genitive,
 			infinitive,
-			irregular
+			irregular,
+			feminine,
+			neuter
 		)
 		VALUES (
-			$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11
+			$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13
 		)
 		RETURNING id
 	`,
@@ -54,6 +56,8 @@ func WriteWord(body models.WriteRequest) error {
 		nullString(lemma.Genitive),
 		nullString(lemma.Infinitive),
 		lemma.Irregular,
+		nullString(lemma.Feminine),
+		nullString(lemma.Neuter),
 	).Scan(&lemma.ID)
 
 	if err != nil {
