@@ -68,7 +68,8 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 			mood,
 			voice,
 			person,
-			degree
+			degree,
+			form_type
 		FROM forms
 		WHERE lemma_id = $1
 	`, lemma.ID)
@@ -100,6 +101,7 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 			&form.Voice,
 			&form.Person,
 			&form.Degree,
+			&form.FormType,
 		)
 
 		if err != nil {

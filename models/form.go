@@ -15,6 +15,7 @@ type Form struct {
 
 	// adjectives
 	Degree			  *string `json:"degree"`
+	FormType		  *string `json:"form_type"`
 
 	// verbs
 	Tense             *string `json:"tense"`

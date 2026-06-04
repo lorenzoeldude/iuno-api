@@ -64,6 +64,14 @@ func generateFirstSecondDeclensionAdjective(
 		buildNeuterAdjectiveForms(lemma, stem)...,
 	)
 
+	forms = append(forms, models.Form{
+		LemmaID:      lemma.ID,
+		PartOfSpeech: "adjective",
+		Form: stem + "ē",
+		Degree: StringPtr("positive"),
+		FormType: StringPtr("adverb"),
+	})
+
 	return forms
 }
 
@@ -248,6 +256,22 @@ func generateThirdDeclensionAdjective(
 		)...,
 	)
 
+	var adverb string
+
+	if strings.HasSuffix(lemma.Lemma, "ns") {
+		adverb = stem + "er"
+	} else {
+		adverb = stem + "iter"
+	}
+
+	forms = append(forms, models.Form{
+		LemmaID:      lemma.ID,
+		PartOfSpeech: "adjective",
+		Form: adverb,
+		Degree: StringPtr("positive"),
+		FormType: StringPtr("adverb"),
+	})
+
 	return forms
 }
 
@@ -325,6 +349,8 @@ func buildThirdDeclensionForms(
 					Gender:          &gender,
 
 					Degree: &degree,
+
+					FormType: StringPtr("adjective"),
 				})
 
 				continue
@@ -350,6 +376,8 @@ func buildThirdDeclensionForms(
 						Gender:          &gender,
 
 						Degree: &degree,
+
+						FormType: StringPtr("adjective"),
 					})
 
 					continue
@@ -371,6 +399,8 @@ func buildThirdDeclensionForms(
 						Gender:          &gender,
 
 						Degree: &degree,
+
+						FormType: StringPtr("adjective"),
 					})
 
 					continue
@@ -396,6 +426,8 @@ func buildThirdDeclensionForms(
 				Gender:          &gender,
 
 				Degree: &degree,
+
+				FormType: StringPtr("adjective"),
 			})
 		}
 	}
@@ -483,6 +515,15 @@ func buildComparativeForms(stem string) []models.Form {
 		)...,
 	)
 
+	forms = append(forms, models.Form{
+		Form: stem + "ius",
+
+		PartOfSpeech: "adjective",
+
+		Degree:   StringPtr("comparative"),
+		FormType: StringPtr("adverb"),
+	})
+
 	return forms
 }
 
@@ -526,6 +567,8 @@ func buildComparativeGenderForms(
 				Gender:          &gender,
 
 				Degree: &degree,
+
+				FormType: StringPtr("adjective"),
 			})
 		}
 	}
@@ -624,6 +667,15 @@ func buildSuperlativeForms(stem string, lemma string) []models.Form {
 		)...,
 	)
 
+	forms = append(forms, models.Form{
+		Form: superlativeStem + "ē",
+
+		PartOfSpeech: "adjective",
+
+		Degree:   StringPtr("superlative"),
+		FormType: StringPtr("adverb"),
+	})
+
 	return forms
 }
 
@@ -664,6 +716,8 @@ func buildSuperlativeGenderForms(
 				Gender:          &gender,
 
 				Degree: &degree,
+
+				FormType: StringPtr("adjective"),
 			})
 		}
 	}
@@ -715,6 +769,8 @@ func buildAdjectiveForms(
 				Gender: &gender,
 
 				Degree: &degree,
+
+				FormType: StringPtr("adjective"),
 			})
 		}
 	}
