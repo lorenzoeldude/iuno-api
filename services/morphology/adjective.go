@@ -540,7 +540,7 @@ func buildSuperlativeForms(stem string, lemma string) []models.Form {
 	if strings.HasSuffix(lemma, "er") {
 		superlativeStem = lemma + "rim"
 	} else {
-		superlativeStem = stem
+		superlativeStem = stem + "issim"
 	}
 
 
