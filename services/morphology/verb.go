@@ -14,6 +14,18 @@ func GenerateVerb(lemma models.Lemma) []models.Form {
 	case 1:
 		return generateFirstConjugation(lemma)
 	}
+	// case 2:
+	// 	return generateFirstConjugation(lemma)
+	// }
+	// case 3:
+	// 	return generateFirstConjugation(lemma)
+	// }
+	// case 31:
+	// 	return generateFirstConjugation(lemma)
+	// }
+	// case 4:
+	// 	return generateFirstConjugation(lemma)
+	// }
 
 	return []models.Form{}
 }
@@ -81,8 +93,13 @@ func generateFirstConjugation(lemma models.Lemma) []models.Form {
 	forms = append(forms, gerundiveForms...)
 
 	// PRESENT PASSIVE PARTICIPLE
-
-
+	forms = append(
+		forms,
+		generatePresentActiveParticiple(
+			lemma,
+			presentStem,
+		)...,
+	)
 
 	// PERFECT PASSIVE PARTICIPLE
 	var pppForms []models.Form
@@ -886,6 +903,84 @@ func buildGerundForms(presentStem string) []models.Form {
 			Mood:         StringPtr("gerund"),
 		},
 	}
+}
+
+func generatePresentActiveParticiple(
+    lemma models.Lemma,
+    presentStem string,
+) []models.Form {
+
+    var forms []models.Form
+
+    papStem := presentStem + "an"
+
+    endings := map[string]map[string]string{
+        "singular": {
+            "genitive":   "tis",
+            "dative":     "tī",
+            "accusative": "tem", // m/f only
+            "ablative":   "te",  // participles usually use -e
+        },
+
+        "plural": {
+            "nominative": "tēs", // m/f only
+            "genitive":   "tium",
+            "dative":     "tibus",
+            "accusative": "tēs", // m/f only
+            "ablative":   "tibus",
+            "vocative":   "tēs", // m/f only
+        },
+    }
+
+    forms = append(
+        forms,
+        buildThirdDeclensionForms(
+            models.Lemma{
+                Declension: IntPtr(31),
+                Lemma:      presentStem + "āns", // amāns
+                Neuter:     StringPtr(papStem + "s"),
+            },
+            papStem,
+            "masculine",
+            endings,
+        )...,
+    )
+
+    forms = append(
+        forms,
+        buildThirdDeclensionForms(
+            models.Lemma{
+                Declension: IntPtr(31),
+                Lemma:      presentStem + "āns",
+                Neuter:     StringPtr(papStem + "s"),
+            },
+            papStem,
+            "feminine",
+            endings,
+        )...,
+    )
+
+    forms = append(
+        forms,
+        buildThirdDeclensionForms(
+            models.Lemma{
+                Declension: IntPtr(31),
+                Lemma:      presentStem + "āns",
+                Neuter:     StringPtr(papStem + "s"),
+            },
+            papStem,
+            "neuter",
+            endings,
+        )...,
+    )
+
+    markAsParticiple(
+        forms,
+        "present",
+        "active",
+    )
+
+    return forms
 }
 
 func markAsParticiple(
