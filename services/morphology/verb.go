@@ -15,6 +15,10 @@ func GenerateVerb(lemma models.Lemma) []models.Form {
 			return generateFirstConjugation(lemma)
 		case 2:
 			return generateSecondConjugation(lemma)
+		case 3:
+    		return generateThirdConjugation(lemma)
+		case 31:
+			return generateThirdIOConjugation(lemma)
 		case 4:
 			return generateFourthConjugation(lemma)
 	}
@@ -179,12 +183,38 @@ func generateSecondConjugation(lemma models.Lemma) []models.Form {
 	)
 }
 
+func generateThirdConjugation(lemma models.Lemma) []models.Form {
+	return generateConjugation(
+		lemma,
+		"ere",
+		"ī",
+		"end",
+		"ēns",
+		ThirdConjugationPatterns,
+		ThirdConjugationPerfectPassivePatterns,
+		ThirdConjugationImperatives,
+	)
+}
+
+func generateThirdIOConjugation(lemma models.Lemma) []models.Form {
+	return generateConjugation(
+		lemma,
+		"ere",
+		"ī",
+		"iend",
+		"iēns",
+		ThirdIOConjugationPatterns,
+		ThirdIOConjugationPerfectPassivePatterns,
+		ThirdIOConjugationImperatives,
+	)
+}
+
 func generateFourthConjugation(lemma models.Lemma) []models.Form {
 	return generateConjugation(
 		lemma,
 		"īre",   // infinitive ending
 		"īrī",   // passive infinitive
-		"iend",     // gerund vowel
+		"iend",  // gerund suffix
 		"iēns",  // present active participle
 		FourthConjugationPatterns,
 		FourthConjugationPerfectPassivePatterns,

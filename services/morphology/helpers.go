@@ -48,8 +48,8 @@ func buildGerundiveStem(lemma models.Lemma) string {
     case 3:
         return removeEnding(infinitive, "ere") + "end"
 
-    case 34: // if you use 34 for 3rd-io
-        return removeEnding(infinitive, "re") + "end"
+    case 31:
+        return removeEnding(infinitive, "ere") + "iend"
 
     case 4:
         return removeEnding(infinitive, "re") + "end"
