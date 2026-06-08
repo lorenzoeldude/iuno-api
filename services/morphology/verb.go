@@ -11,1001 +11,183 @@ import (
 func GenerateVerb(lemma models.Lemma) []models.Form {
 
 	switch *lemma.Conjugation {
-	case 1:
-		return generateFirstConjugation(lemma)
+		case 1:
+			return generateFirstConjugation(lemma)
+		case 2:
+			return generateSecondConjugation(lemma)
+		case 4:
+			return generateFourthConjugation(lemma)
 	}
-	// case 2:
-	// 	return generateFirstConjugation(lemma)
-	// }
-	// case 3:
-	// 	return generateFirstConjugation(lemma)
-	// }
-	// case 31:
-	// 	return generateFirstConjugation(lemma)
-	// }
-	// case 4:
-	// 	return generateFirstConjugation(lemma)
-	// }
 
 	return []models.Form{}
 }
 
-//
-// =====================================================
-// 1ST CONJUGATION
-// =====================================================
-//
-
-func generateFirstConjugation(lemma models.Lemma) []models.Form {
+func generateConjugation(
+	lemma models.Lemma,
+	infinitiveEnding string,
+	passiveInfinitive string,
+	gerundSuffix string,
+	participleEnding string,
+	patterns []FinitePattern,
+	ppPatterns []PerfectPassivePattern,
+	imperatives []ImperativePattern,
+) []models.Form {
 
 	var forms []models.Form
 
-	presentStem := removeVerbEnding(*lemma.Infinitive, "āre")
+	// STEMS
+	presentStem := removeVerbEnding(*lemma.Infinitive, infinitiveEnding)
 	perfectStem := removeVerbEnding(*lemma.Perfect, "ī")
-
-	/// PPP stem
 	ppp := pppStem(*lemma.Supine)
 
-	// Active Infinitives
-	forms = append(forms,
-		infinitiveForm(presentStem+"āre", "present", "active"),
-		infinitiveForm(perfectStem+"isse", "perfect", "active"),
-		infinitiveForm(ppp+"ūrus esse", "future", "active"),
-	)
-
-	// Passive Infinitives
-	forms = append(forms,
-		infinitiveForm(presentStem+"ārī", "present", "passive"),
-		infinitiveForm(ppp+"um esse", "perfect", "passive"),
-		infinitiveForm(ppp+"um īrī", "future", "passive"),
-	)
-
-	// GERUND
-	forms = append(forms, buildGerundForms(presentStem)...)
-
-	// GERUNDIVE
+	gerundStem := presentStem + gerundSuffix
 	gerundiveStem := buildGerundiveStem(lemma)
 
-	var gerundiveForms []models.Form
+	pluperfectSubjStem := perfectStem + "isse"
+	impSubPasStem := removeVerbEnding(*lemma.Infinitive, "re")
 
-	gerundiveForms = append(
-		gerundiveForms,
-		buildMasculineAdjectiveForms(lemma, gerundiveStem)...,
-	)
-
-	gerundiveForms = append(
-		gerundiveForms,
-		buildFeminineAdjectiveForms(lemma, gerundiveStem)...,
-	)
-
-	gerundiveForms = append(
-		gerundiveForms,
-		buildNeuterAdjectiveForms(lemma, gerundiveStem)...,
-	)
-
-	mood := "gerundive"
-
-	for i := range gerundiveForms {
-		gerundiveForms[i].PartOfSpeech = "verb"
-		gerundiveForms[i].Mood = &mood
-	}
-
-	forms = append(forms, gerundiveForms...)
-
-	// PRESENT PASSIVE PARTICIPLE
+	// INFINITIVES
 	forms = append(
 		forms,
-		generatePresentActiveParticiple(
-			lemma,
+		buildInfinitives(
 			presentStem,
+			perfectStem,
+			ppp,
+			infinitiveEnding,
+			passiveInfinitive,
 		)...,
 	)
 
-	// PERFECT PASSIVE PARTICIPLE
-	var pppForms []models.Form
+	// GERUND
+	forms = append(forms, buildGerundForms(gerundStem)...)
 
-	pppForms = append(
-		pppForms,
-		buildMasculineAdjectiveForms(lemma, ppp)...,
+	// GERUNDIVE
+	forms = append(forms, buildGerundiveForms(lemma, gerundiveStem)...)
+
+	// PARTICIPLES
+	forms = append(
+		forms,
+		generatePresentActiveParticiple(
+			presentStem,
+			participleEnding,
+		)...,
 	)
 
-	pppForms = append(
-		pppForms,
-		buildFeminineAdjectiveForms(lemma, ppp)...,
+	forms = append(
+		forms,
+		generatePerfectPassiveParticiple(lemma, ppp)...,
 	)
 
-	pppForms = append(
-		pppForms,
-		buildNeuterAdjectiveForms(lemma, ppp)...,
+	forms = append(
+		forms,
+		generateFutureActiveParticiple(lemma, ppp)...,
 	)
 
-	markAsParticiple(pppForms, "perfect", "passive",)
+	// FINITE FORMS
+	for _, pattern := range patterns {
 
-	forms = append(forms, pppForms...)
+		var stem string
 
-	// FUTURE ACTIVE PARTICIPLE
-	var fapForms []models.Form
+		switch pattern.Stem {
 
-	futureActiveStem := ppp + "ūr"
+		case "present":
+			stem = presentStem
 
-	fapForms = append(
-		fapForms,
-		buildMasculineAdjectiveForms(lemma, futureActiveStem)...,
-	)
+		case "perfect":
+			stem = perfectStem
 
-	fapForms = append(
-		fapForms,
-		buildFeminineAdjectiveForms(lemma, futureActiveStem)...,
-	)
+		case "pluperfect_subj":
+			stem = pluperfectSubjStem
 
-	fapForms = append(
-		fapForms,
-		buildNeuterAdjectiveForms(lemma, futureActiveStem)...,
-	)
+		case "imperfect_passive_subj":
+			stem = impSubPasStem
 
-	markAsParticiple(
-		fapForms,
-		"future",
-		"active",
-	)
+		case "imperfect_subj":
+			stem = *lemma.Infinitive
 
-	forms = append(forms, fapForms...)
-
-
-	//
-	// PRESENT ACTIVE INDICATIVE
-	//
-
-	forms = append(forms, buildVerbForms(
-		lemma,
-		presentStem,
-		map[string]map[string]string{
-			"singular": {
-				"first":  "ō",
-				"second": "ās",
-				"third":  "at",
-			},
-			"plural": {
-				"first":  "āmus",
-				"second": "ātis",
-				"third":  "ant",
-			},
-		},
-		"present",
-		"indicative",
-		"active",
-	)...)
-
-	//
-	// IMPERFECT ACTIVE INDICATIVE
-	//
-
-	forms = append(forms, buildVerbForms(
-		lemma,
-		presentStem,
-		map[string]map[string]string{
-			"singular": {
-				"first":  "ābam",
-				"second": "ābās",
-				"third":  "ābat",
-			},
-			"plural": {
-				"first":  "ābāmus",
-				"second": "ābātis",
-				"third":  "ābant",
-			},
-		},
-		"imperfect",
-		"indicative",
-		"active",
-	)...)
-
-	//
-	// FUTURE ACTIVE INDICATIVE
-	//
-
-	forms = append(forms, buildVerbForms(
-		lemma,
-		presentStem,
-		map[string]map[string]string{
-			"singular": {
-				"first":  "ābō",
-				"second": "ābis",
-				"third":  "ābit",
-			},
-			"plural": {
-				"first":  "ābimus",
-				"second": "ābitis",
-				"third":  "ābunt",
-			},
-		},
-		"future",
-		"indicative",
-		"active",
-	)...)
-
-	//
-	// PERFECT ACTIVE INDICATIVE
-	//
-
-	forms = append(forms, buildVerbForms(
-		lemma,
-		perfectStem,
-		map[string]map[string]string{
-			"singular": {
-				"first":  "ī",
-				"second": "istī",
-				"third":  "it",
-			},
-			"plural": {
-				"first":  "imus",
-				"second": "istis",
-				"third":  "ērunt",
-			},
-		},
-		"perfect",
-		"indicative",
-		"active",
-	)...)
-
-	//
-	// PLUPERFECT ACTIVE INDICATIVE
-	//
-
-	forms = append(forms, buildVerbForms(
-		lemma,
-		perfectStem,
-		map[string]map[string]string{
-			"singular": {
-				"first":  "eram",
-				"second": "erās",
-				"third":  "erat",
-			},
-			"plural": {
-				"first":  "erāmus",
-				"second": "erātis",
-				"third":  "erant",
-			},
-		},
-		"pluperfect",
-		"indicative",
-		"active",
-	)...)
-
-	//
-	// FUTURE PERFECT ACTIVE INDICATIVE
-	//
-
-	forms = append(forms, buildVerbForms(
-		lemma,
-		perfectStem,
-		map[string]map[string]string{
-			"singular": {
-				"first":  "erō",
-				"second": "eris",
-				"third":  "erit",
-			},
-			"plural": {
-				"first":  "erimus",
-				"second": "eritis",
-				"third":  "erint",
-			},
-		},
-		"future perfect",
-		"indicative",
-		"active",
-	)...)
-
-	//
-	// PRESENT ACTIVE SUBJUNCTIVE
-	//
-
-	forms = append(forms, buildVerbForms(
-		lemma,
-		presentStem,
-		map[string]map[string]string{
-			"singular": {
-				"first":  "em",
-				"second": "ēs",
-				"third":  "et",
-			},
-			"plural": {
-				"first":  "ēmus",
-				"second": "ētis",
-				"third":  "ent",
-			},
-		},
-		"present",
-		"subjunctive",
-		"active",
-	)...)
-
-	//
-	// IMPERFECT ACTIVE SUBJUNCTIVE
-	//
-
-	imperfectSubjStem := removeVerbEnding(*lemma.Infinitive, "re")
-
-	forms = append(forms, buildVerbForms(
-		lemma,
-		imperfectSubjStem,
-		map[string]map[string]string{
-			"singular": {
-				"first":  "m",
-				"second": "s",
-				"third":  "t",
-			},
-			"plural": {
-				"first":  "mus",
-				"second": "tis",
-				"third":  "nt",
-			},
-		},
-		"imperfect",
-		"subjunctive",
-		"active",
-	)...)
-
-	//
-	// PERFECT ACTIVE SUBJUNCTIVE
-	//
-
-	forms = append(forms, buildVerbForms(
-		lemma,
-		perfectStem,
-		map[string]map[string]string{
-			"singular": {
-				"first":  "erim",
-				"second": "erīs",
-				"third":  "erit",
-			},
-			"plural": {
-				"first":  "erīmus",
-				"second": "erītis",
-				"third":  "erint",
-			},
-		},
-		"perfect",
-		"subjunctive",
-		"active",
-	)...)
-
-	//
-	// PLUPERFECT ACTIVE SUBJUNCTIVE
-	//
-
-	pluperfectSubjStem := perfectStem + "isse"
-
-	forms = append(forms, buildVerbForms(
-		lemma,
-		pluperfectSubjStem,
-		map[string]map[string]string{
-			"singular": {
-				"first":  "m",
-				"second": "s",
-				"third":  "t",
-			},
-			"plural": {
-				"first":  "mus",
-				"second": "tis",
-				"third":  "nt",
-			},
-		},
-		"pluperfect",
-		"subjunctive",
-		"active",
-	)...)
-
-	//
-	// PRESENT ACTIVE IMPERATIVE
-	//
-
-	forms = append(forms,
-		models.Form{
-			Form:   presentStem + "ā",
-			PartOfSpeech:   "verb",
-			Person: IntPtr(2),
-			Number: "singular",
-			Tense:  StringPtr("present"),
-			Mood:   StringPtr("imperative"),
-			Voice:  StringPtr("active"),
-		},
-		models.Form{
-			Form:   presentStem + "āte",
-			PartOfSpeech:   "verb",
-			Person: IntPtr(2),
-			Number: "plural",
-			Tense:  StringPtr("present"),
-			Mood:   StringPtr("imperative"),
-			Voice:  StringPtr("active"),
-		},
-	)
-
-	//
-	// FUTURE ACTIVE IMPERATIVE
-	//
-
-	forms = append(forms,
-		models.Form{
-			Form: presentStem + "ātō",
-			PartOfSpeech: "verb",
-			Person: IntPtr(2),
-			Number: "singular",
-			Tense: StringPtr("future"),
-			Mood: StringPtr("imperative"),
-			Voice: StringPtr("active"),
-		},
-		models.Form{
-			Form: presentStem + "ātōte",
-			PartOfSpeech: "verb",
-			Person: IntPtr(2),
-			Number: "plural",
-			Tense: StringPtr("future"),
-			Mood: StringPtr("imperative"),
-			Voice: StringPtr("active"),
-		},
-		models.Form{
-			Form: presentStem + "ātō",
-			PartOfSpeech: "verb",
-			Person: IntPtr(3),
-			Number: "singular",
-			Tense: StringPtr("future"),
-			Mood: StringPtr("imperative"),
-			Voice: StringPtr("active"),
-		},
-		models.Form{
-			Form: presentStem + "antō",
-			PartOfSpeech: "verb",
-			Person: IntPtr(3),
-			Number: "plural",
-			Tense: StringPtr("future"),
-			Mood: StringPtr("imperative"),
-			Voice: StringPtr("active"),
-		},
-	)
-
-	//
-	// PRESENT PASSIVE INDICATIVE
-	//
-	forms = append(forms, buildVerbForms(
-		lemma,
-		presentStem,
-		map[string]map[string]string{
-			"singular": {
-				"first":  "or",
-				"second": "āris",
-				"third":  "ātur",
-			},
-			"plural": {
-				"first":  "āmur",
-				"second": "āminī",
-				"third":  "antur",
-			},
-		},
-		"present",
-		"indicative",
-		"passive",
-	)...)
-
-	//
-	// IMPERFECT PASSIVE INDICATIVE
-	//
-
-	forms = append(forms, buildVerbForms(
-		lemma,
-		presentStem,
-		map[string]map[string]string{
-			"singular": {
-				"first":  "ābar",
-				"second": "ābāris",
-				"third":  "ābātur",
-			},
-			"plural": {
-				"first":  "ābāmur",
-				"second": "ābāminī",
-				"third":  "ābantur",
-			},
-		},
-		"imperfect",
-		"indicative",
-		"passive",
-	)...)
-
-	//
-	// FUTURE PASSIVE INDICATIVE
-	//
-
-	forms = append(forms, buildVerbForms(
-		lemma,
-		presentStem,
-		map[string]map[string]string{
-			"singular": {
-				"first":  "ābor",
-				"second": "āberis",
-				"third":  "ābitur",
-			},
-			"plural": {
-				"first":  "ābimur",
-				"second": "ābiminī",
-				"third":  "ābuntur",
-			},
-		},
-		"future",
-		"indicative",
-		"passive",
-	)...)
-
-	//
-	// PERFECT PASSIVE INDICATIVE
-	//
-
-	forms = append(forms, buildPerfectPassiveForms(
-		ppp,
-		map[string]map[string]string{
-			"singular": {
-				"first":  "sum",
-				"second": "es",
-				"third":  "est",
-			},
-			"plural": {
-				"first":  "sumus",
-				"second": "estis",
-				"third":  "sunt",
-			},
-		},
-		"perfect",
-		"indicative",
-	)...)
-
-	//
-	// PLUPERFECT PASSIVE INDICATIVE
-	//
-	forms = append(forms, buildPerfectPassiveForms(
-		ppp,
-		map[string]map[string]string{
-			"singular": {
-				"first":  "eram",
-				"second": "erās",
-				"third":  "erat",
-			},
-			"plural": {
-				"first":  "erāmus",
-				"second": "erātis",
-				"third":  "erant",
-			},
-		},
-		"pluperfect",
-		"indicative",
-	)...)
-
-	//
-	// FUTURE PERFECT PASSIVE INDICATIVE
-	//
-	forms = append(forms, buildPerfectPassiveForms(
-		ppp,
-		map[string]map[string]string{
-			"singular": {
-				"first":  "erō",
-				"second": "eris",
-				"third":  "erit",
-			},
-			"plural": {
-				"first":  "erimus",
-				"second": "eritis",
-				"third":  "erunt",
-			},
-		},
-		"future perfect",
-		"indicative",
-	)...)
-
-	//
-	// PRESENT PASSIVE SUBJUNCTIVE
-	//
-
-	forms = append(forms, buildVerbForms(
-		lemma,
-		presentStem,
-		map[string]map[string]string{
-			"singular": {
-				"first":  "er",
-				"second": "ēris",
-				"third":  "ētur",
-			},
-			"plural": {
-				"first":  "ēmur",
-				"second": "ēminī",
-				"third":  "entur",
-			},
-		},
-		"present",
-		"subjunctive",
-		"passive",
-	)...)
-
-	//
-	// IMPERFECT PASSIVE SUBJUNCTIVE
-	//
-	impSubPasStem := removeVerbEnding(*lemma.Infinitive, "re")
-
-	forms = append(forms, buildVerbForms(
-		lemma,
-		impSubPasStem,
-		map[string]map[string]string{
-			"singular": {
-				"first":  "rer",
-				"second": "rēris",
-				"third":  "rētur",
-			},
-			"plural": {
-				"first":  "rēmur",
-				"second": "rēminī",
-				"third":  "rentur",
-			},
-		},
-		"imperfect",
-		"subjunctive",
-		"passive",
-	)...)
-
-	//
-	// PERFECT PASSIVE SUBJUNCTIVE
-	//
-	forms = append(forms, buildPerfectPassiveForms(
-		ppp,
-		map[string]map[string]string{
-			"singular": {
-				"first":  "sim",
-				"second": "sīs",
-				"third":  "sit",
-			},
-			"plural": {
-				"first":  "sīmus",
-				"second": "sītis",
-				"third":  "sint",
-			},
-		},
-		"perfect",
-		"subjunctive",
-	)...)
-
-	//
-	// PLUPERFECT PASSIVE SUBJUNCTIVE
-	//
-	forms = append(forms, buildPerfectPassiveForms(
-		ppp,
-		map[string]map[string]string{
-			"singular": {
-				"first":  "essem",
-				"second": "essēs",
-				"third":  "esset",
-			},
-			"plural": {
-				"first":  "essēmus",
-				"second": "essētis",
-				"third":  "essent",
-			},
-		},
-		"pluperfect",
-		"subjunctive",
-	)...)
-
-	//
-	// PRESENT PASSIVE IMPERATIVE
-	//
-
-	forms = append(forms,
-		models.Form{
-			Form:   presentStem + "āre",
-			PartOfSpeech:   "verb",
-			Person: IntPtr(2),
-			Number: "singular",
-			Tense:  StringPtr("present"),
-			Mood:   StringPtr("imperative"),
-			Voice:  StringPtr("passive"),
-		},
-		models.Form{
-			Form:   presentStem + "āminī",
-			PartOfSpeech:   "verb",
-			Person: IntPtr(2),
-			Number: "plural",
-			Tense:  StringPtr("present"),
-			Mood:   StringPtr("imperative"),
-			Voice:  StringPtr("passive"),
-		},
-	)
-
-	//
-	// FUTURE PASSIVE IMPERATIVE
-	//
-
-	forms = append(forms,
-		models.Form{
-			Form: presentStem + "ātor",
-			PartOfSpeech: "verb",
-			Person: IntPtr(2),
-			Number: "singular",
-			Tense: StringPtr("future"),
-			Mood: StringPtr("imperative"),
-			Voice: StringPtr("passive"),
-		},
-		models.Form{
-			Form: presentStem + "āminī",
-			PartOfSpeech: "verb",
-			Person: IntPtr(2),
-			Number: "plural",
-			Tense: StringPtr("future"),
-			Mood: StringPtr("imperative"),
-			Voice: StringPtr("passive"),
-		},
-		models.Form{
-			Form: presentStem + "ātor",
-			PartOfSpeech: "verb",
-			Person: IntPtr(3),
-			Number: "singular",
-			Tense: StringPtr("future"),
-			Mood: StringPtr("imperative"),
-			Voice: StringPtr("passive"),
-		},
-		models.Form{
-			Form: presentStem + "antor",
-			PartOfSpeech: "verb",
-			Person: IntPtr(3),
-			Number: "plural",
-			Tense: StringPtr("future"),
-			Mood: StringPtr("imperative"),
-			Voice: StringPtr("passive"),
-		},
-	)
-
-	return forms
-}
-
-//
-// =====================================================
-// BUILD VERB FORMS
-// =====================================================
-//
-
-func buildVerbForms(
-	lemma models.Lemma,
-	stem string,
-	endings map[string]map[string]string,
-	tense string,
-	mood string,
-	voice string,
-) []models.Form {
-
-	var forms []models.Form
-
-	numbers := []string{
-		"singular",
-		"plural",
-	}
-
-	persons := []int{1, 2, 3}
-
-	for _, number := range numbers {
-		for _, person := range persons {
-
-			var personKey string
-
-			switch person {
-			case 1:
-				personKey = "first"
-			case 2:
-				personKey = "second"
-			case 3:
-				personKey = "third"
-			}
-
-			form := stem + endings[number][personKey]
-
-			forms = append(forms,
-				verbForm(
-					form,
-					person,
-					number,
-					tense,
-					mood,
-					voice,
-				),
-			)
+		default:
+			panic("unknown stem type: " + pattern.Stem)
 		}
+
+		forms = append(
+			forms,
+			buildFiniteVerbForms(
+				stem,
+				pattern.Endings,
+				pattern.Tense,
+				pattern.Mood,
+				pattern.Voice,
+			)...,
+		)
+	}
+
+	// PERFECT PASSIVE FORMS
+	for _, pattern := range ppPatterns {
+
+		forms = append(
+			forms,
+			buildPerfectPassiveForms(
+				ppp,
+				pattern.Endings,
+				pattern.Tense,
+				pattern.Mood,
+			)...,
+		)
+	}
+
+	// IMPERATIVES
+	for _, pattern := range imperatives {
+
+		forms = append(
+			forms,
+			imperativeForm(
+				presentStem+pattern.Form,
+				pattern.Person,
+				pattern.Number,
+				pattern.Tense,
+				pattern.Voice,
+			),
+		)
 	}
 
 	return forms
 }
 
-func buildPerfectPassiveForms(
-	ppp string,
-	sumForms map[string]map[string]string,
-	tense string,
-	mood string,
-) []models.Form {
-
-	var forms []models.Form
-
-	numbers := []string{"singular", "plural"}
-	persons := []int{1, 2, 3}
-
-	for _, number := range numbers {
-		for _, person := range persons {
-
-			var key string
-
-			switch person {
-			case 1:
-				key = "first"
-			case 2:
-				key = "second"
-			case 3:
-				key = "third"
-			}
-
-			var ending string
-
-			if number == "singular" {
-				ending = "us"
-			} else {
-				ending = "ī"
-			}
-
-			form := ppp + ending + " " + sumForms[number][key]
-
-			forms = append(forms,
-				verbForm(
-					form,
-					person,
-					number,
-					tense,
-					mood,
-					"passive",
-				),
-			)
-		}
-	}
-
-	return forms
+func generateFirstConjugation(lemma models.Lemma) []models.Form {
+	return generateConjugation(
+		lemma,
+		"āre",
+		"ārī",
+		"and",
+		"āns",
+		FirstConjugationPatterns,
+		FirstConjugationPerfectPassivePatterns,
+		FirstConjugationImperatives,
+	)
 }
 
-func buildGerundForms(presentStem string) []models.Form {
-
-	base := presentStem + "and"
-
-	return []models.Form{
-		{
-			Form:         base + "ī",
-			PartOfSpeech: "verb",
-			GrammaticalCase: StringPtr("genitive"),
-			Number:       "singular",
-			Mood:         StringPtr("gerund"),
-		},
-		{
-			Form:         base + "ō",
-			PartOfSpeech: "verb",
-			GrammaticalCase: StringPtr("dative"),
-			Number:       "singular",
-			Mood:         StringPtr("gerund"),
-		},
-		{
-			Form:         base + "um",
-			PartOfSpeech: "verb",
-			GrammaticalCase: StringPtr("accusative"),
-			Number:       "singular",
-			Mood:         StringPtr("gerund"),
-		},
-		{
-			Form:         base + "ō",
-			PartOfSpeech: "verb",
-			GrammaticalCase: StringPtr("ablative"),
-			Number:       "singular",
-			Mood:         StringPtr("gerund"),
-		},
-	}
+func generateSecondConjugation(lemma models.Lemma) []models.Form {
+	return generateConjugation(
+		lemma,
+		"ēre",
+		"ērī",
+		"end",
+		"ēns",
+		SecondConjugationPatterns,
+		SecondConjugationPerfectPassivePatterns,
+		SecondConjugationImperatives,
+	)
 }
 
-func generatePresentActiveParticiple(
-    lemma models.Lemma,
-    presentStem string,
-) []models.Form {
-
-    var forms []models.Form
-
-    papStem := presentStem + "an"
-
-    endings := map[string]map[string]string{
-        "singular": {
-            "genitive":   "tis",
-            "dative":     "tī",
-            "accusative": "tem", // m/f only
-            "ablative":   "te",  // participles usually use -e
-        },
-
-        "plural": {
-            "nominative": "tēs", // m/f only
-            "genitive":   "tium",
-            "dative":     "tibus",
-            "accusative": "tēs", // m/f only
-            "ablative":   "tibus",
-            "vocative":   "tēs", // m/f only
-        },
-    }
-
-    forms = append(
-        forms,
-        buildThirdDeclensionForms(
-            models.Lemma{
-                Declension: IntPtr(31),
-                Lemma:      presentStem + "āns", // amāns
-                Neuter:     StringPtr(papStem + "s"),
-            },
-            papStem,
-            "masculine",
-            endings,
-        )...,
-    )
-
-    forms = append(
-        forms,
-        buildThirdDeclensionForms(
-            models.Lemma{
-                Declension: IntPtr(31),
-                Lemma:      presentStem + "āns",
-                Neuter:     StringPtr(papStem + "s"),
-            },
-            papStem,
-            "feminine",
-            endings,
-        )...,
-    )
-
-    forms = append(
-        forms,
-        buildThirdDeclensionForms(
-            models.Lemma{
-                Declension: IntPtr(31),
-                Lemma:      presentStem + "āns",
-                Neuter:     StringPtr(papStem + "s"),
-            },
-            papStem,
-            "neuter",
-            endings,
-        )...,
-    )
-
-    markAsParticiple(
-        forms,
-        "present",
-        "active",
-    )
-
-    return forms
-}
-
-func markAsParticiple(
-    forms []models.Form,
-    tense string,
-    voice string,
-) {
-    for i := range forms {
-        forms[i].PartOfSpeech = "verb"
-        forms[i].Mood = StringPtr("participle")
-        forms[i].Tense = StringPtr(tense)
-        forms[i].Voice = StringPtr(voice)
-    }
-}
-
-func infinitiveForm(
-    form string,
-    tense string,
-    voice string,
-) models.Form {
-    return models.Form{
-        Form: form,
-        PartOfSpeech: "verb",
-        Tense: StringPtr(tense),
-        Mood: StringPtr("infinitive"),
-        Voice: StringPtr(voice),
-    }
+func generateFourthConjugation(lemma models.Lemma) []models.Form {
+	return generateConjugation(
+		lemma,
+		"īre",   // infinitive ending
+		"īrī",   // passive infinitive
+		"iend",     // gerund vowel
+		"iēns",  // present active participle
+		FourthConjugationPatterns,
+		FourthConjugationPerfectPassivePatterns,
+		FourthConjugationImperatives,
+	)
 }

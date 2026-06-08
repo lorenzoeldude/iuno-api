@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// HELPERS
 func removeEnding(word string, ending string) string {
     if strings.HasSuffix(word, ending) {
         return strings.TrimSuffix(word, ending)
@@ -22,6 +23,14 @@ func removeVerbEnding(word string, ending string) string {
 	}
 
 	return word[:len(word)-len(ending)]
+}
+
+func StringPtr(s string) *string {
+	return &s
+}
+
+func IntPtr(i int) *int {
+	return &i
 }
 
 func buildGerundiveStem(lemma models.Lemma) string {
@@ -49,14 +58,6 @@ func buildGerundiveStem(lemma models.Lemma) string {
     return ""
 }
 
-func StringPtr(s string) *string {
-	return &s
-}
-
-func IntPtr(i int) *int {
-	return &i
-}
-
 func verbForm(
 	form string,
 	person int,
@@ -76,4 +77,24 @@ func verbForm(
 		Mood:  StringPtr(mood),
 		Voice: StringPtr(voice),
 	}
+}
+
+func NormalizeLatin(s string) string {
+	replacer := strings.NewReplacer(
+		"ā", "a",
+		"ē", "e",
+		"ī", "i",
+		"ō", "o",
+		"ū", "u",
+		"ȳ", "y",
+
+		"Ā", "a",
+		"Ē", "e",
+		"Ī", "i",
+		"Ō", "o",
+		"Ū", "u",
+		"Ȳ", "y",
+	)
+
+	return strings.ToLower(replacer.Replace(s))
 }
