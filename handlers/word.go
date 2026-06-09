@@ -9,7 +9,7 @@ import (
 
 	"iuno-api/models"
 	"iuno-api/services"
-	// "iuno-api/services/morphology"
+	"iuno-api/services/morphology"
 	"iuno-api/utils"
 	// "iuno-api/db"
 )
@@ -68,6 +68,8 @@ func WriteWordHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "lemma is required", http.StatusBadRequest)
 		return
 	}
+
+	body.Lemma.LemmaNormalized = morphology.NormalizeLatin(body.Lemma.Lemma)
 
 	err = services.WriteWord(body)
 	if err != nil {

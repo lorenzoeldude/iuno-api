@@ -28,6 +28,8 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 			perfect,
 			supine,
 			infinitive,
+			feminine,
+			neuter,
 			irregular
 		FROM lemmas
 		WHERE LOWER(lemma_normalized) = LOWER($1)
@@ -43,6 +45,8 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 		&lemma.Perfect,
 		&lemma.Supine,
 		&lemma.Infinitive,
+		&lemma.Feminine,
+		&lemma.Neuter,
 		&lemma.Irregular,
 	)
 
