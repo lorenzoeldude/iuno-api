@@ -6,4 +6,5 @@ type WriteRequest struct {
 	Meanings []string		`json:"meanings"`
 	Examples []string		`json:"examples"` 	
 	Derivatives []string	`json:"derivatives"`
+	ManualForms []Form 		`json:"manual_forms"`
 }

@@ -65,11 +65,23 @@ func WriteWord(body models.WriteRequest) error {
 		return err
 	}
 
-	log.Println("forms ->")
+	var forms []models.Form
 
-	forms := morphology.Generate(lemma)
+	if lemma.Irregular {
+    	forms = body.ManualForms
+	} else {
+		forms = morphology.Generate(lemma)
+	}
 
-	log.Println("generated forms:", len(forms))
+	// log.Println("forms: ", forms, len(forms))
+
+	// for _, form := range forms {
+	// 	// log.Println("form: ", form.Form, *form.GrammaticalCase, form.Number)
+	// 	form.Gender = lemma.Gender
+	// 	form.PartOfSpeech = lemma.PartOfSpeech
+	// }
+
+	// log.Println("generated forms:", len(forms))
 
 	for _, form := range forms {
 
@@ -98,10 +110,10 @@ func WriteWord(body models.WriteRequest) error {
 			lemma.ID,
 			form.Form,
 			morphology.NormalizeLatin(form.Form),
-			form.PartOfSpeech,
+			lemma.PartOfSpeech,
 			form.GrammaticalCase,
 			form.Number,
-			form.Gender,
+			lemma.Gender,
 			form.Tense,
 			form.Mood,
 			form.Voice,
