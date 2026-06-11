@@ -113,7 +113,7 @@ func WriteWord(body models.WriteRequest) error {
 			lemma.PartOfSpeech,
 			form.GrammaticalCase,
 			form.Number,
-			lemma.Gender,
+			form.Gender,
 			form.Tense,
 			form.Mood,
 			form.Voice,
