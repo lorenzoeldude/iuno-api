@@ -20,6 +20,12 @@ type Lemma struct {
 	Perfect *string `json:"perfect"`
 	Supine *string `json:"supine"`
 	Infinitive *string `json:"infinitive"`
+	
+	// PRONOUN
+	PronounType *string `json:"pronoun_type"`
+
+	// PREPOSITION
+	GovernsCase *string `json:"governs_case"`
 
 	// ENGINE FLAGS
 	Irregular bool `json:"irregular"`

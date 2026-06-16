@@ -8,6 +8,7 @@ type Example struct {
 type Meaning struct {
 	ID    int    `json:"id"`
 	Meaning string `json:"meaning"`
+	GovernsCase *string `json:"governs_case"`
 }
 
 type Definition struct {

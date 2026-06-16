@@ -12,7 +12,7 @@ import (
 func WriteWord(body models.WriteRequest) error {
 
 	log.Println("lemma: ", body.Lemma.Lemma)
-	log.Println("lemma: ", *body.Lemma.Supine)
+	log.Println("pronoun type: ", body.Lemma.PronounType)
 
 	lemma := body.Lemma
 
@@ -38,10 +38,11 @@ func WriteWord(body models.WriteRequest) error {
 			infinitive,
 			irregular,
 			feminine,
-			neuter
+			neuter,
+			pronoun_type
 		)
 		VALUES (
-			$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13
+			$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14
 		)
 		RETURNING id
 	`,
@@ -58,6 +59,7 @@ func WriteWord(body models.WriteRequest) error {
 		lemma.Irregular,
 		nullString(lemma.Feminine),
 		nullString(lemma.Neuter),
+		nullString(lemma.PronounType),
 	).Scan(&lemma.ID)
 
 	if err != nil {
@@ -67,25 +69,26 @@ func WriteWord(body models.WriteRequest) error {
 
 	var forms []models.Form
 
-	if lemma.Irregular {
-    	forms = body.ManualForms
+	// store prepositions and conjunctions
+	if lemma.PartOfSpeech == "preposition" || lemma.PartOfSpeech == "conjunction" || lemma.PartOfSpeech == "interjection" || lemma.PartOfSpeech == "adverb" {
+		forms = []models.Form{
+			{
+				LemmaID: lemma.ID,
+				Form:     lemma.Lemma,
+				FormNormalized: morphology.NormalizeLatin(lemma.Lemma),
+				PartOfSpeech: lemma.PartOfSpeech,
+			},
+		}
 	} else {
-		forms = morphology.Generate(lemma)
+		if lemma.Irregular {
+			forms = body.ManualForms
+		} else {
+			forms = morphology.Generate(lemma)
+		}
 	}
 
-	// log.Println("forms: ", forms, len(forms))
-
-	// for _, form := range forms {
-	// 	// log.Println("form: ", form.Form, *form.GrammaticalCase, form.Number)
-	// 	form.Gender = lemma.Gender
-	// 	form.PartOfSpeech = lemma.PartOfSpeech
-	// }
-
-	// log.Println("generated forms:", len(forms))
 
 	for _, form := range forms {
-
-		// form.FormNormalized := morphology.NormalizeLatin(form.Form)
 
 		_, err := tx.Exec(ctx, `
 			INSERT INTO forms (
@@ -139,17 +142,25 @@ func WriteWord(body models.WriteRequest) error {
 		return err
 	}
 
-	// INSERT NEW MEANINGS
+	// INSERT NEW MEANING
 	for _, m := range body.Meanings {
 
-		if m == "" {
+		if m.Meaning == "" {
 			continue
 		}
 
 		_, err := tx.Exec(ctx, `
-			INSERT INTO meanings (lemma_id, meaning)
-			VALUES ($1, $2)
-		`, lemma.ID, m)
+			INSERT INTO meanings (
+				lemma_id,
+				meaning,
+				governs_case
+			)
+			VALUES ($1, $2, $3)
+		`,
+			lemma.ID,
+			m.Meaning,
+			m.GovernsCase,
+		)
 
 		if err != nil {
 			log.Println("MEANING INSERT ERROR:", err)

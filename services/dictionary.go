@@ -155,7 +155,7 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 
 	// Get Meanings
 	meaningRows, err := db.Pool.Query(context.Background(), `
-		SELECT id, meaning
+		SELECT id, meaning, governs_case
 		FROM meanings
 		WHERE lemma_id = $1
 		ORDER BY sort_order ASC
@@ -176,6 +176,7 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 		err := meaningRows.Scan(
 			&m.ID,
 			&m.Meaning,
+			&m.GovernsCase,
 		)
 
 		if err != nil {
