@@ -123,13 +123,20 @@ func SearchFormHandler(w http.ResponseWriter, r *http.Request) {
 			f.grammatical_case,
 			f.tense,
 			l.lemma,
-			COALESCE(MIN(m.meaning), '') AS meaning,
+			COALESCE(
+				(
+					SELECT meaning
+					FROM meanings
+					WHERE lemma_id = l.id
+					ORDER BY id
+					LIMIT 1
+				),
+				''
+			) AS meaning,
 			l.lemma_normalized
 		FROM forms f
 		JOIN lemmas l
 			ON l.id = f.lemma_id
-		LEFT JOIN meanings m
-			ON m.lemma_id = l.id
 		WHERE LOWER(f.form_normalized) LIKE LOWER($1)
 		GROUP BY
 			f.form,

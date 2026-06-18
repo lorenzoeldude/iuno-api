@@ -25,6 +25,21 @@ func main() {
 	// =====================================================
 	http.HandleFunc("/api/word/", handlers.WordHandler)
 
+	// TEXTS
+	http.HandleFunc(
+		"/api/texts",
+		middleware.CORSMiddleware(
+			handlers.TextsHandler,
+		),
+	)
+
+	http.HandleFunc(
+		"/api/text/",
+		middleware.CORSMiddleware(
+			handlers.TextSectionHandler,
+		),
+	)
+
 
 	// =====================================================
 	// SEARCH
