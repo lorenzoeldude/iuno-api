@@ -36,6 +36,13 @@ func main() {
 	http.HandleFunc(
 		"/api/text/",
 		middleware.CORSMiddleware(
+			handlers.TextHandler,
+		),
+	)
+
+	http.HandleFunc(
+		"/api/text-section/",
+		middleware.CORSMiddleware(
 			handlers.TextSectionHandler,
 		),
 	)

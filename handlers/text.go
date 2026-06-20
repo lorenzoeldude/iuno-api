@@ -25,9 +25,120 @@ type TextSection struct {
 	Title    string `json:"title"`
 }
 
-func TextSectionHandler(w http.ResponseWriter, r *http.Request) {
+func TextHandler(w http.ResponseWriter, r *http.Request) {
 
 	path := strings.TrimPrefix(r.URL.Path, "/api/text/")
+	parts := strings.Split(path, "/")
+
+	if len(parts) != 2 {
+		http.Error(w, "invalid path", http.StatusBadRequest)
+		return
+	}
+
+	author := parts[0]
+	title := parts[1]
+
+	var text struct {
+		ID          int64  `json:"id"`
+		Title       string `json:"title"`
+		Author      string `json:"author"`
+		Description string `json:"description"`
+		Difficulty  string `json:"difficulty"`
+	}
+
+	err := db.Pool.QueryRow(
+		r.Context(),
+		`
+		SELECT
+			id,
+			title,
+			author,
+			COALESCE(description, ''),
+			COALESCE(difficulty, '')
+		FROM texts
+		WHERE
+			author = $1
+			AND title = $2
+		`,
+		author,
+		title,
+	).Scan(
+		&text.ID,
+		&text.Title,
+		&text.Author,
+		&text.Description,
+		&text.Difficulty,
+	)
+
+	if err != nil {
+		http.Error(w, "text not found", http.StatusNotFound)
+		return
+	}
+
+	rows, err := db.Pool.Query(
+		r.Context(),
+		`
+		SELECT
+			id,
+			position,
+			title
+		FROM text_sections
+		WHERE text_id = $1
+		ORDER BY position
+		`,
+		text.ID,
+	)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	defer rows.Close()
+
+	var sections []TextSection
+
+	for rows.Next() {
+
+		var section TextSection
+
+		err := rows.Scan(
+			&section.ID,
+			&section.Position,
+			&section.Title,
+		)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		sections = append(sections, section)
+	}
+
+	response := struct {
+		ID          int64         `json:"id"`
+		Title       string        `json:"title"`
+		Author      string        `json:"author"`
+		Description string        `json:"description"`
+		Difficulty  string        `json:"difficulty"`
+		Sections    []TextSection `json:"sections"`
+	}{
+		ID:          text.ID,
+		Title:       text.Title,
+		Author:      text.Author,
+		Description: text.Description,
+		Difficulty:  text.Difficulty,
+		Sections:    sections,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func TextSectionHandler(w http.ResponseWriter, r *http.Request) {
+
+	path := strings.TrimPrefix(r.URL.Path, "/api/text-section/")
 	parts := strings.Split(path, "/")
 
 	if len(parts) != 3 {

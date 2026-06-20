@@ -12,9 +12,13 @@ import (
 )
 
 type TrainerQuestion struct {
-	Lemma   string   `json:"lemma"`
-	Correct string   `json:"correct"`
-	Answers []string `json:"answers"`
+	Lemma      string   `json:"lemma"`
+	LemmaNormalized string   `json:"lemma_normalized"`
+	Infinitive *string `json:"infinitive"`
+	Correct    string   `json:"correct"`
+	Answers    []string `json:"answers"`
+	Definition string   `json:"definition"`
+	Examples   []string `json:"examples"`
 }
 
 func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
@@ -27,28 +31,29 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 
 	var lemmaID int
 	var lemma string
+	var lemmaNormalized string
+	var infinitive *string
 	var correct string
 
 	// =====================================================
-	// RANDOM LEMMA + CORRECT MEANING
+	// RANDOM LEMMA
 	// =====================================================
 	err := db.Pool.QueryRow(context.Background(), `
 		SELECT
-			l.id,
-			l.lemma,
-			m.meaning
-		FROM lemmas l
-		JOIN meanings m
-			ON m.lemma_id = l.id
+			id,
+			lemma,
+			lemma_normalized, 
+			infinitive
+		FROM lemmas
 		ORDER BY RANDOM()
 		LIMIT 1
-	`).Scan(&lemmaID, &lemma, &correct)
+	`).Scan(&lemmaID, &lemma, &lemmaNormalized, &infinitive)
 
 	if err != nil {
 
 		http.Error(
 			w,
-			"failed to fetch trainer question",
+			"failed to fetch trainer lemma",
 			http.StatusInternalServerError,
 		)
 
@@ -56,15 +61,80 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// =====================================================
+	// FIRST MEANING OF LEMMA
+	// =====================================================
+	err = db.Pool.QueryRow(context.Background(), `
+		SELECT meaning
+		FROM meanings
+		WHERE lemma_id = $1
+		ORDER BY id
+		LIMIT 1
+	`, lemmaID).Scan(&correct)
+
+	if err != nil {
+
+		http.Error(
+			w,
+			"failed to fetch meaning",
+			http.StatusInternalServerError,
+		)
+
+		return
+	}
+
+	// =====================================================
+	// FIRST DEFINITION OF LEMMA
+	// =====================================================
+	var definition string
+
+	err = db.Pool.QueryRow(context.Background(), `
+		SELECT definition
+		FROM definitions
+		WHERE lemma_id = $1
+		ORDER BY id
+		LIMIT 1
+	`, lemmaID).Scan(&definition)
+
+	if err != nil {
+		definition = ""
+	}
+
+	// =====================================================
+	// FIRST 3 EXAMPLES
+	// =====================================================
+	examples := []string{}
+
+	exampleRows, err := db.Pool.Query(context.Background(), `
+		SELECT example
+		FROM examples
+		WHERE lemma_id = $1
+		ORDER BY id
+		LIMIT 3
+	`, lemmaID)
+
+	if err == nil {
+
+		defer exampleRows.Close()
+
+		for exampleRows.Next() {
+
+			var example string
+
+			if err := exampleRows.Scan(&example); err == nil {
+				examples = append(examples, example)
+			}
+		}
+	}
+
+	// =====================================================
 	// RANDOM WRONG ANSWERS
-	// exclude ALL meanings from the same lemma
 	// =====================================================
 	rows, err := db.Pool.Query(context.Background(), `
 		SELECT meaning
 		FROM meanings
 		WHERE lemma_id != $1
 		ORDER BY RANDOM()
-		LIMIT 10
+		LIMIT 20
 	`, lemmaID)
 
 	if err != nil {
@@ -90,12 +160,10 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 
 		var wrong string
 
-		err := rows.Scan(&wrong)
-		if err != nil {
+		if err := rows.Scan(&wrong); err != nil {
 			continue
 		}
 
-		// avoid duplicates
 		if used[wrong] {
 			continue
 		}
@@ -132,9 +200,13 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	question := TrainerQuestion{
-		Lemma:   lemma,
-		Correct: correct,
-		Answers: answers,
+		Lemma:      lemma,
+		LemmaNormalized: lemmaNormalized,
+		Infinitive: infinitive,
+		Correct:    correct,
+		Answers:    answers,
+		Definition: definition,
+		Examples:   examples,
 	}
 
 	// =====================================================
