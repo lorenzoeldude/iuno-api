@@ -11,11 +11,9 @@ import (
 
 func WriteWord(body models.WriteRequest) error {
 
-	log.Println("lemma: ", body.Lemma.Lemma)
-	log.Println("pronoun type: ", body.Lemma.PronounType)
+	log.Println("lemma:", body.Lemma.Lemma)
 
 	lemma := body.Lemma
-
 	ctx := context.Background()
 
 	tx, err := db.Pool.Begin(ctx)
@@ -24,62 +22,158 @@ func WriteWord(body models.WriteRequest) error {
 	}
 	defer tx.Rollback(ctx)
 
-	err = tx.QueryRow(ctx, `
-		INSERT INTO lemmas (
-			lemma,
-			lemma_normalized,
-			part_of_speech,
-			gender,
-			declension,
-			conjugation,
-			perfect,
-			supine,
-			genitive,
-			infinitive,
-			irregular,
-			feminine,
-			neuter,
-			pronoun_type
-		)
-		VALUES (
-			$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14
-		)
-		RETURNING id
-	`,
-		lemma.Lemma,
-		lemma.LemmaNormalized,
-		lemma.PartOfSpeech,
-		lemma.Gender,
-		nullInt(lemma.Declension),
-		nullInt(lemma.Conjugation),
-		nullString(lemma.Perfect),
-		nullString(lemma.Supine),
-		nullString(lemma.Genitive),
-		nullString(lemma.Infinitive),
-		lemma.Irregular,
-		nullString(lemma.Feminine),
-		nullString(lemma.Neuter),
-		nullString(lemma.PronounType),
-	).Scan(&lemma.ID)
+	// =====================================================
+	// CREATE OR UPDATE LEMMA
+	// =====================================================
 
+	var existingID int
+
+	err = tx.QueryRow(ctx, `
+		SELECT id
+		FROM lemmas
+		WHERE lemma_normalized = $1
+	`, lemma.LemmaNormalized).Scan(&existingID)
+
+	if err == nil {
+
+		// UPDATE EXISTING
+		lemma.ID = existingID
+
+		_, err = tx.Exec(ctx, `
+			UPDATE lemmas
+			SET
+				lemma = $2,
+				part_of_speech = $3,
+				gender = $4,
+				declension = $5,
+				conjugation = $6,
+				perfect = $7,
+				supine = $8,
+				genitive = $9,
+				infinitive = $10,
+				irregular = $11,
+				feminine = $12,
+				neuter = $13,
+				pronoun_type = $14
+			WHERE id = $1
+		`,
+			lemma.ID,
+			lemma.Lemma,
+			lemma.PartOfSpeech,
+			lemma.Gender,
+			nullInt(lemma.Declension),
+			nullInt(lemma.Conjugation),
+			nullString(lemma.Perfect),
+			nullString(lemma.Supine),
+			nullString(lemma.Genitive),
+			nullString(lemma.Infinitive),
+			lemma.Irregular,
+			nullString(lemma.Feminine),
+			nullString(lemma.Neuter),
+			nullString(lemma.PronounType),
+		)
+
+		if err != nil {
+			return err
+		}
+
+	} else {
+
+		// INSERT NEW
+		err = tx.QueryRow(ctx, `
+			INSERT INTO lemmas (
+				lemma,
+				lemma_normalized,
+				part_of_speech,
+				gender,
+				declension,
+				conjugation,
+				perfect,
+				supine,
+				genitive,
+				infinitive,
+				irregular,
+				feminine,
+				neuter,
+				pronoun_type
+			)
+			VALUES (
+				$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14
+			)
+			RETURNING id
+		`,
+			lemma.Lemma,
+			lemma.LemmaNormalized,
+			lemma.PartOfSpeech,
+			lemma.Gender,
+			nullInt(lemma.Declension),
+			nullInt(lemma.Conjugation),
+			nullString(lemma.Perfect),
+			nullString(lemma.Supine),
+			nullString(lemma.Genitive),
+			nullString(lemma.Infinitive),
+			lemma.Irregular,
+			nullString(lemma.Feminine),
+			nullString(lemma.Neuter),
+			nullString(lemma.PronounType),
+		).Scan(&lemma.ID)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	// =====================================================
+	// CLEAR CHILD TABLES
+	// =====================================================
+
+	_, err = tx.Exec(ctx, `DELETE FROM forms WHERE lemma_id = $1`, lemma.ID)
 	if err != nil {
-		log.Println("inserting error", err)
 		return err
 	}
 
+	_, err = tx.Exec(ctx, `DELETE FROM meanings WHERE lemma_id = $1`, lemma.ID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(ctx, `DELETE FROM examples WHERE lemma_id = $1`, lemma.ID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(ctx, `DELETE FROM definitions WHERE lemma_id = $1`, lemma.ID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(ctx, `DELETE FROM derivatives WHERE lemma_id = $1`, lemma.ID)
+	if err != nil {
+		return err
+	}
+
+	// =====================================================
+	// GENERATE FORMS
+	// =====================================================
+
 	var forms []models.Form
 
-	// store prepositions and conjunctions
-	if lemma.PartOfSpeech == "preposition" || lemma.PartOfSpeech == "conjunction" || lemma.PartOfSpeech == "interjection" || lemma.PartOfSpeech == "adverb" {
+	if lemma.PartOfSpeech == "preposition" ||
+		lemma.PartOfSpeech == "conjunction" ||
+		lemma.PartOfSpeech == "interjection" ||
+		lemma.PartOfSpeech == "adverb" {
+
 		forms = []models.Form{
 			{
-				LemmaID: lemma.ID,
-				Form:     lemma.Lemma,
+				LemmaID:       lemma.ID,
+				Form:          lemma.Lemma,
 				FormNormalized: morphology.NormalizeLatin(lemma.Lemma),
-				PartOfSpeech: lemma.PartOfSpeech,
+				PartOfSpeech:  lemma.PartOfSpeech,
 			},
 		}
+
 	} else {
+
 		if lemma.Irregular {
 			forms = body.ManualForms
 		} else {
@@ -87,7 +181,7 @@ func WriteWord(body models.WriteRequest) error {
 		}
 	}
 
-
+	// INSERT FORMS
 	for _, form := range forms {
 
 		_, err := tx.Exec(ctx, `
@@ -126,23 +220,11 @@ func WriteWord(body models.WriteRequest) error {
 		)
 
 		if err != nil {
-			log.Println("error inserting forms", err)
 			return err
 		}
 	}
 
-	// DELETE OLD MEANINGS
-	_, err = tx.Exec(ctx, `
-		DELETE FROM meanings
-			WHERE lemma_id = $1
-		`, lemma.ID)
-
-	if err != nil {
-		log.Println("MEANINGS DELETE ERROR:", err)
-		return err
-	}
-
-	// INSERT NEW MEANING
+	// INSERT MEANINGS
 	for _, m := range body.Meanings {
 
 		if m.Meaning == "" {
@@ -163,61 +245,57 @@ func WriteWord(body models.WriteRequest) error {
 		)
 
 		if err != nil {
-			log.Println("MEANING INSERT ERROR:", err)
 			return err
 		}
 	}
 
 	// INSERT EXAMPLES
-	for _, m := range body.Examples {
+	for _, ex := range body.Examples {
 
-		if m == "" {
+		if ex == "" {
 			continue
 		}
 
 		_, err := tx.Exec(ctx, `
 			INSERT INTO examples (lemma_id, example)
 			VALUES ($1, $2)
-		`, lemma.ID, m)
+		`, lemma.ID, ex)
 
 		if err != nil {
-			log.Println("EXAMPLE INSERT ERROR:", err)
 			return err
 		}
 	}
 
 	// INSERT DEFINITIONS
-	for _, m := range body.Definitions {
+	for _, def := range body.Definitions {
 
-		if m == "" {
+		if def == "" {
 			continue
 		}
 
 		_, err := tx.Exec(ctx, `
 			INSERT INTO definitions (lemma_id, definition)
 			VALUES ($1, $2)
-		`, lemma.ID, m)
+		`, lemma.ID, def)
 
 		if err != nil {
-			log.Println("DEFINITIONS INSERT ERROR:", err)
 			return err
 		}
 	}
 
 	// INSERT DERIVATIVES
-	for _, m := range body.Derivatives {
+	for _, d := range body.Derivatives {
 
-		if m == "" {
+		if d == "" {
 			continue
 		}
 
 		_, err := tx.Exec(ctx, `
 			INSERT INTO derivatives (lemma_id, derivative)
 			VALUES ($1, $2)
-		`, lemma.ID, m)
+		`, lemma.ID, d)
 
 		if err != nil {
-			log.Println("DERIVATIVES INSERT ERROR:", err)
 			return err
 		}
 	}
