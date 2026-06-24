@@ -235,7 +235,7 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 
 	defer derivativeRows.Close()
 
-	var derivatives []models.Derivative
+	derivatives := []models.Derivative{}
 
 	for derivativeRows.Next() {
 
@@ -254,9 +254,6 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 		derivatives = append(derivatives, m)
 	}
 	
-// 	if err := derivativeRows.Err(); err != nil {
-//     log.Println("ROWS ERROR:", err)
-// }
 	log.Println("derivatives; ", derivatives)
 
 	// RESPONSE
