@@ -68,6 +68,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			username,
 			password_hash,
 			is_premium,
+			is_admin,
 			created_at
 		FROM users
 		WHERE email = $1
@@ -79,6 +80,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		&user.Username,
 		&user.PasswordHash,
 		&user.IsPremium,
+		&user.IsAdmin,
 		&user.CreatedAt,
 	)
 
@@ -119,6 +121,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		user.ID,
 		user.Username,
 		user.IsPremium,
+		user.IsAdmin,
 	)
 
 	if err != nil {
@@ -146,6 +149,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			"email":      user.Email,
 			"username":   user.Username,
 			"is_premium": user.IsPremium,
+			"is_admin": user.IsAdmin,
 		},
 	})
 }

@@ -12,6 +12,7 @@ type Claims struct {
 	UserID    int    `json:"user_id"`
 	Username  string `json:"username"`
 	IsPremium bool   `json:"is_premium"`
+	IsAdmin   bool   `json:"is_admin"`
 	jwt.RegisteredClaims
 }
 
@@ -19,6 +20,7 @@ func GenerateJWT(
 	userID int,
 	username string,
 	isPremium bool,
+	isAdmin bool,
 ) (string, error) {
 
 	expirationTime := time.Now().Add(7 * 24 * time.Hour)
@@ -27,6 +29,7 @@ func GenerateJWT(
 		UserID:    userID,
 		Username:  username,
 		IsPremium: isPremium,
+		IsAdmin:   isAdmin,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 		},

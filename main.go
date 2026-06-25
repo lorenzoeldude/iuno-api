@@ -76,18 +76,48 @@ func main() {
 
 	http.HandleFunc(
 		"/admin/users/count",
-		handlers.GetUserCountHandler,
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				middleware.AdminOnly(
+					handlers.GetUserCountHandler,
+				),
+			),
+		),
 	)
 
 	http.HandleFunc(
 		"/admin/lemmas/count",
-		handlers.GetLemmaCountHandler,
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				middleware.AdminOnly(
+					handlers.GetLemmaCountHandler,
+				),
+			),
+		),
 	)
 
-	// =====================================================
-	// Write Word
-	// =====================================================
-	http.HandleFunc("/api/admin/write-word/", handlers.WriteWordHandler)
+	http.HandleFunc(
+		"/api/admin/write-word/",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				middleware.AdminOnly(
+					handlers.WriteWordHandler,
+				),
+			),
+		),
+	)
+
+	// http.HandleFunc(
+	// 	"/admin/users/count",
+	// 	handlers.GetUserCountHandler,
+	// )
+
+	// http.HandleFunc(
+	// 	"/admin/lemmas/count",
+	// 	handlers.GetLemmaCountHandler,
+	// )
+
+	// http.HandleFunc("/api/admin/write-word/", handlers.WriteWordHandler)
 
 	// =====================================================
 	// AUTH

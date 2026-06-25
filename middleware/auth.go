@@ -2,9 +2,9 @@ package middleware
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"strings"
-	"log"
 
 	"github.com/golang-jwt/jwt/v5"
 
@@ -21,12 +21,17 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 
 		authHeader := r.Header.Get("Authorization")
 
+		// log.Println("AUTH HEADER:", authHeader)
+
 		if authHeader == "" {
+			log.Println("AUTH FAILED: missing Authorization header")
 			http.Error(w, "missing token", http.StatusUnauthorized)
 			return
 		}
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+
+		// log.Println("TOKEN STRING:", tokenString)
 
 		claims := &utils.Claims{}
 
@@ -38,16 +43,23 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			},
 		)
 
-		if err != nil || !token.Valid {
-			log.Println("TOKEN ERROR:", err)
+		// log.Println("PARSE ERROR:", err)
+
+		// if token != nil {
+		// 	log.Println("TOKEN VALID:", token.Valid)
+		// } else {
+		// 	log.Println("TOKEN IS NIL")
+		// }
+
+		// log.Printf("CLAIMS AFTER PARSE: %+v\n", claims)
+
+		if err != nil || token == nil || !token.Valid {
+			log.Println("AUTH FAILED: invalid token")
 			http.Error(w, "invalid token", http.StatusUnauthorized)
 			return
 		}
 
 		// log.Println("AUTH SUCCESS - USER ID:", claims.UserID)
-		// log.Println("TOKEN:", tokenString)
-		// log.Println("TOKEN VALID:", token.Valid)
-		// log.Printf("CLAIMS: %+v\n", claims)
 
 		ctx := context.WithValue(
 			r.Context(),

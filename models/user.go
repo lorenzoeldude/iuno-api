@@ -9,6 +9,7 @@ type User struct {
 	PasswordHash string    `json:"-"`
 	IsPremium    bool      `json:"is_premium"`
 	EmailVerified bool   `json:"email_verified"`
+	IsAdmin  bool   `json:"isAdmin"`
 	CreatedAt    time.Time `json:"created_at"`
 }
 
