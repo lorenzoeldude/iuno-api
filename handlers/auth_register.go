@@ -2,6 +2,9 @@ package handlers
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -97,6 +100,30 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// =====================================================
+	// CREATE EMAIL VERIFICATION TOKEN
+	// =====================================================
+	tokenBytes := make([]byte, 32)
+
+	_, err = rand.Read(tokenBytes)
+	if err != nil {
+
+		log.Println("TOKEN ERROR:", err)
+
+		http.Error(
+			w,
+			"failed to create account",
+			http.StatusInternalServerError,
+		)
+
+		return
+	}
+
+	verificationToken := hex.EncodeToString(tokenBytes)
+
+	hash := sha256.Sum256([]byte(verificationToken))
+	verificationHash := hex.EncodeToString(hash[:])
+
+	// =====================================================
 	// INSERT USER
 	// =====================================================
 	var userID int
@@ -105,14 +132,17 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		INSERT INTO users (
 			email,
 			username,
-			password_hash
+			password_hash,
+			email_verified,
+			email_verification_hash
 		)
-		VALUES ($1, $2, $3)
+		VALUES ($1, $2, $3, FALSE, $4)
 		RETURNING id
 	`,
 		body.Email,
 		body.Username,
 		string(passwordHash),
+		verificationHash,
 	).Scan(&userID)
 
 	if err != nil {
@@ -154,6 +184,18 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
+
+	// =====================================================
+	// TODO: SEND EMAIL
+	// =====================================================
+	log.Println(
+		"EMAIL VERIFICATION TOKEN:",
+		verificationToken,
+	)
+
+	// Example verification URL:
+	//
+	// https://yourdomain.com/verify-email?token=<verificationToken>
 
 	// =====================================================
 	// RESPONSE

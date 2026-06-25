@@ -500,9 +500,9 @@ func buildComparativeForms(stem string) []models.Form {
 			"nominative": "iora",
 			"genitive":   "iōrum",
 			"dative":     "iōribus",
-			"accusative": "iora",
+			"accusative": "iōra",
 			"ablative":   "iōribus",
-			"vocative":   "iora",
+			"vocative":   "iōra",
 		},
 	}
 
