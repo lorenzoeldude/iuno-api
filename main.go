@@ -73,7 +73,16 @@ func main() {
 	// =====================================================
 	// ADMIN
 	// =====================================================
-	// http.HandleFunc("/api/admin/lemma", handlers.UpsertLemmaHandler)
+
+	http.HandleFunc(
+		"/admin/users/count",
+		handlers.GetUserCountHandler,
+	)
+
+	http.HandleFunc(
+		"/admin/lemmas/count",
+		handlers.GetLemmaCountHandler,
+	)
 
 	// =====================================================
 	// Write Word
