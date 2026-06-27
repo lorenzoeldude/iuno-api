@@ -174,7 +174,7 @@ func WriteWord(body models.WriteRequest) error {
 
 	} else {
 
-		if lemma.Irregular {
+		if lemma.Irregular && len(body.ManualForms) > 0 {
 			forms = body.ManualForms
 		} else {
 			forms = morphology.Generate(lemma)

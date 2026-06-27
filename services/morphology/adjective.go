@@ -1,7 +1,7 @@
 package morphology
 
 import (
-	// "log"
+	"log"
 	"iuno-api/models"
 	"strings"
 )
@@ -9,6 +9,12 @@ import (
 func GenerateAdjective(lemma models.Lemma) []models.Form {
 
 	if lemma.Declension == nil {
+		log.Printf("Skipping adjective %s: missing declension", lemma.Lemma)
+		return []models.Form{}
+	}
+
+	if lemma.Genitive == nil {
+		log.Printf("Skipping adjective %s: missing genitive", lemma.Lemma)
 		return []models.Form{}
 	}
 
@@ -497,7 +503,7 @@ func buildComparativeForms(stem string) []models.Form {
 			"vocative":   "ius",
 		},
 		"plural": {
-			"nominative": "iora",
+			"nominative": "iōra",
 			"genitive":   "iōrum",
 			"dative":     "iōribus",
 			"accusative": "iōra",

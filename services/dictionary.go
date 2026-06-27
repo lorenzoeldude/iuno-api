@@ -6,8 +6,12 @@ import (
 
 	"iuno-api/db"
 	"iuno-api/models"
-	// "iuno-api/services/morphology"
 )
+
+
+// =====================================================
+// GET WORD BY NORMALIZED LEMMA
+// =====================================================
 
 func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 
@@ -51,13 +55,77 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 	)
 
 	if err != nil {
-		log.Println("DB ERROR:", err)
 		return models.DictionaryResponse{}, err
 	}
 
-	// log.Println("FOUND:", lemma.Lemma)
 
-	// Get Forms
+	return getWordData(lemma)
+}
+
+
+
+// =====================================================
+// GET WORD BY ID (ADMIN EDITOR)
+// =====================================================
+
+func GetWordByID(id int) (models.DictionaryResponse, error) {
+
+	var lemma models.Lemma
+
+	err := db.Pool.QueryRow(context.Background(), `
+		SELECT
+			id,
+			lemma,
+			lemma_normalized,
+			part_of_speech,
+			gender,
+			declension,
+			genitive,
+			conjugation,
+			perfect,
+			supine,
+			infinitive,
+			feminine,
+			neuter,
+			irregular
+		FROM lemmas
+		WHERE id = $1
+	`, id).Scan(
+		&lemma.ID,
+		&lemma.Lemma,
+		&lemma.LemmaNormalized,
+		&lemma.PartOfSpeech,
+		&lemma.Gender,
+		&lemma.Declension,
+		&lemma.Genitive,
+		&lemma.Conjugation,
+		&lemma.Perfect,
+		&lemma.Supine,
+		&lemma.Infinitive,
+		&lemma.Feminine,
+		&lemma.Neuter,
+		&lemma.Irregular,
+	)
+
+	if err != nil {
+		return models.DictionaryResponse{}, err
+	}
+
+
+	return getWordData(lemma)
+}
+
+
+
+// =====================================================
+// COMMON DATA LOADING
+// =====================================================
+
+func getWordData(lemma models.Lemma) (models.DictionaryResponse, error) {
+
+
+	// ================= FORMS =================
+
 	formRows, err := db.Pool.Query(context.Background(), `
 		SELECT
 			id,
@@ -79,11 +147,11 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 	`, lemma.ID)
 
 	if err != nil {
-		log.Println("FORMS ERROR:", err)
 		return models.DictionaryResponse{}, err
 	}
 
 	defer formRows.Close()
+
 
 	var forms []models.Form
 
@@ -113,12 +181,13 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 			continue
 		}
 
-		// log.Println("Gender: ", *form.Gender)
-
 		forms = append(forms, form)
 	}
 
-	// Get Examples
+
+
+	// ================= EXAMPLES =================
+
 	exampleRows, err := db.Pool.Query(context.Background(), `
 		SELECT id, example
 		FROM examples
@@ -127,11 +196,11 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 	`, lemma.ID)
 
 	if err != nil {
-		log.Println("EXAMPLES ERROR:", err)
 		return models.DictionaryResponse{}, err
 	}
 
 	defer exampleRows.Close()
+
 
 	var examples []models.Example
 
@@ -145,7 +214,6 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 		)
 
 		if err != nil {
-			log.Println("SCAN ERROR:", err)
 			continue
 		}
 
@@ -153,7 +221,9 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 	}
 
 
-	// Get Meanings
+
+	// ================= MEANINGS =================
+
 	meaningRows, err := db.Pool.Query(context.Background(), `
 		SELECT id, meaning, governs_case
 		FROM meanings
@@ -166,6 +236,7 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 	}
 
 	defer meaningRows.Close()
+
 
 	var meanings []models.Meaning
 
@@ -180,14 +251,16 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 		)
 
 		if err != nil {
-			log.Println("SCAN ERROR:", err)
 			continue
 		}
 
 		meanings = append(meanings, m)
 	}
 
-	// Get Definitions
+
+
+	// ================= DEFINITIONS =================
+
 	definitionRows, err := db.Pool.Query(context.Background(), `
 		SELECT id, definition
 		FROM definitions
@@ -201,26 +274,29 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 
 	defer definitionRows.Close()
 
+
 	var definitions []models.Definition
 
 	for definitionRows.Next() {
 
-		var m models.Definition
+		var d models.Definition
 
 		err := definitionRows.Scan(
-			&m.ID,
-			&m.Definition,
+			&d.ID,
+			&d.Definition,
 		)
 
 		if err != nil {
-			log.Println("SCAN ERROR:", err)
 			continue
 		}
 
-		definitions = append(definitions, m)
+		definitions = append(definitions, d)
 	}
 
-	// Get Derivatives
+
+
+	// ================= DERIVATIVES =================
+
 	derivativeRows, err := db.Pool.Query(context.Background(), `
 		SELECT id, derivative
 		FROM derivatives
@@ -229,42 +305,38 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 	`, lemma.ID)
 
 	if err != nil {
-		log.Println("derivative error: ", err)
 		return models.DictionaryResponse{}, err
 	}
 
 	defer derivativeRows.Close()
 
-	derivatives := []models.Derivative{}
+
+	var derivatives []models.Derivative
 
 	for derivativeRows.Next() {
 
-		var m models.Derivative
+		var d models.Derivative
 
 		err := derivativeRows.Scan(
-			&m.ID,
-			&m.Derivative,
+			&d.ID,
+			&d.Derivative,
 		)
 
 		if err != nil {
-			log.Println("SCAN ERROR:", err)
 			continue
 		}
 
-		derivatives = append(derivatives, m)
+		derivatives = append(derivatives, d)
 	}
-	
-	log.Println("derivatives; ", derivatives)
 
-	// RESPONSE
-	response := models.DictionaryResponse{
-		Lemma:     lemma,
-		Forms:    forms,
-		Examples: examples,
-		Meanings: meanings,
+
+
+	return models.DictionaryResponse{
+		Lemma:       lemma,
+		Forms:       forms,
+		Examples:    examples,
+		Meanings:    meanings,
 		Definitions: definitions,
 		Derivatives: derivatives,
-	}
-
-	return response, nil
+	}, nil
 }

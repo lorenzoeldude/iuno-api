@@ -19,9 +19,21 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		authHeader := r.Header.Get("Authorization")
+		// =====================================================
+		// CORS PREFLIGHT
+		// =====================================================
+		// OPTIONS requests do not contain Authorization headers.
+		// They must pass through so CORSMiddleware can respond.
+		// =====================================================
+		if r.Method == http.MethodOptions {
+			next.ServeHTTP(w, r)
+			return
+		}
 
-		// log.Println("AUTH HEADER:", authHeader)
+		// =====================================================
+		// GET AUTHORIZATION HEADER
+		// =====================================================
+		authHeader := r.Header.Get("Authorization")
 
 		if authHeader == "" {
 			log.Println("AUTH FAILED: missing Authorization header")
@@ -31,8 +43,9 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 
-		// log.Println("TOKEN STRING:", tokenString)
-
+		// =====================================================
+		// PARSE JWT
+		// =====================================================
 		claims := &utils.Claims{}
 
 		token, err := jwt.ParseWithClaims(
@@ -43,30 +56,24 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			},
 		)
 
-		// log.Println("PARSE ERROR:", err)
-
-		// if token != nil {
-		// 	log.Println("TOKEN VALID:", token.Valid)
-		// } else {
-		// 	log.Println("TOKEN IS NIL")
-		// }
-
-		// log.Printf("CLAIMS AFTER PARSE: %+v\n", claims)
-
 		if err != nil || token == nil || !token.Valid {
 			log.Println("AUTH FAILED: invalid token")
 			http.Error(w, "invalid token", http.StatusUnauthorized)
 			return
 		}
 
-		// log.Println("AUTH SUCCESS - USER ID:", claims.UserID)
-
+		// =====================================================
+		// STORE USER IN CONTEXT
+		// =====================================================
 		ctx := context.WithValue(
 			r.Context(),
 			UserContextKey,
 			claims,
 		)
 
+		// =====================================================
+		// CONTINUE
+		// =====================================================
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}
 }

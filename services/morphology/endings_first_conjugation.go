@@ -123,14 +123,14 @@ var firstPresentActiveSubjunctive = VerbEndings{
 
 var firstImperfectActiveSubjunctive = VerbEndings{
 	"singular": {
-		"first":  "m",
-		"second": "s",
-		"third":  "t",
+		"first":  "em",
+		"second": "ēs",
+		"third":  "et",
 	},
 	"plural": {
-		"first":  "mus",
-		"second": "tis",
-		"third":  "nt",
+		"first":  "ēmus",
+		"second": "ētis",
+		"third":  "ent",
 	},
 }
 

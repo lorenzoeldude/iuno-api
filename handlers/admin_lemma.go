@@ -5,10 +5,14 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
+
 
 	"iuno-api/db"
 	"iuno-api/models"
 	"iuno-api/utils"
+	"iuno-api/services"
 )
 
 type AdminLemmaRequest struct {
@@ -159,4 +163,52 @@ func UpsertLemmaHandler(w http.ResponseWriter, r *http.Request) {
 		"status": "ok",
 		"id":     id,
 	})
+}
+
+func GetLemmaByIDHandler(w http.ResponseWriter, r *http.Request) {
+
+	// URL:
+	// /api/admin/lemma/123
+
+	idString := strings.TrimPrefix(
+		r.URL.Path,
+		"/api/admin/lemma/",
+	)
+
+
+	id, err := strconv.Atoi(idString)
+
+	if err != nil {
+
+		http.Error(
+			w,
+			"invalid lemma id",
+			http.StatusBadRequest,
+		)
+
+		return
+	}
+
+
+	word, err := services.GetWordByID(id)
+
+	if err != nil {
+
+		http.Error(
+			w,
+			"lemma not found",
+			http.StatusNotFound,
+		)
+
+		return
+	}
+
+
+	w.Header().Set(
+		"Content-Type",
+		"application/json",
+	)
+
+
+	json.NewEncoder(w).Encode(word)
 }

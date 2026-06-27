@@ -97,6 +97,17 @@ func main() {
 	)
 
 	http.HandleFunc(
+		"/api/admin/lemma/",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				middleware.AdminOnly(
+					handlers.GetLemmaByIDHandler,
+				),
+			),
+		),
+	)
+
+	http.HandleFunc(
 		"/api/admin/write-word/",
 		middleware.CORSMiddleware(
 			middleware.AuthMiddleware(
@@ -107,17 +118,16 @@ func main() {
 		),
 	)
 
-	// http.HandleFunc(
-	// 	"/admin/users/count",
-	// 	handlers.GetUserCountHandler,
-	// )
-
-	// http.HandleFunc(
-	// 	"/admin/lemmas/count",
-	// 	handlers.GetLemmaCountHandler,
-	// )
-
-	// http.HandleFunc("/api/admin/write-word/", handlers.WriteWordHandler)
+	http.HandleFunc(
+		"/api/admin/bulk-import",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				middleware.AdminOnly(
+					handlers.BulkImportHandler,
+				),
+			),
+		),
+	)
 
 	// =====================================================
 	// AUTH
@@ -194,6 +204,32 @@ func main() {
 
 					case http.MethodDelete:
 						handlers.DeleteLemmaFromUserListHandler(w, r)
+
+					default:
+						http.Error(
+							w,
+							"method not allowed",
+							http.StatusMethodNotAllowed,
+						)
+					}
+				},
+			),
+		),
+	)
+
+	// =====================================================
+	// ACCOUNT
+	// =====================================================
+	http.HandleFunc(
+		"/api/account",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				func(w http.ResponseWriter, r *http.Request) {
+
+					switch r.Method {
+
+					case http.MethodDelete:
+						handlers.DeleteAccountHandler(w, r)
 
 					default:
 						http.Error(

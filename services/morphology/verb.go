@@ -1,6 +1,8 @@
 package morphology
 
 import (
+	"strings"
+	
 	"iuno-api/models"
 )
 
@@ -107,7 +109,7 @@ func generateConjugation(
 			stem = impSubPasStem
 
 		case "imperfect_subj":
-			stem = *lemma.Infinitive
+			stem = strings.TrimSuffix(*lemma.Infinitive, "e")
 
 		default:
 			panic("unknown stem type: " + pattern.Stem)
