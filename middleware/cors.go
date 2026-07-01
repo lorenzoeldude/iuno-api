@@ -17,7 +17,7 @@ func CORSMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		if allowedOrigins[origin] {
-			w.Header().Set("Access-Cotrol-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Origin", origin)
 		}
 
 		// =====================================================
