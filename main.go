@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"iuno-api/db"
 	"iuno-api/handlers"
@@ -243,12 +244,23 @@ func main() {
 		),
 	)
 
+	// HEALTH
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
 	// =====================================================
 	// START SERVER
 	// =====================================================
-	log.Println("Server running on http://localhost:8080")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	log.Printf("Server running on port %s", port)
 
 	log.Fatal(
-		http.ListenAndServe(":8080", nil),
+		http.ListenAndServe(":"+port, nil),
 	)
 }
