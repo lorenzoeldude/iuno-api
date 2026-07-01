@@ -15,7 +15,13 @@ func main() {
 	// =====================================================
 	// INIT DATABASE
 	// =====================================================
-	db.Init("postgres://lorenz@localhost:5432/iuno?sslmode=disable")
+	dbURL := os.Getenv("DATABASE_URL")
+
+	if dbURL == "" {
+		log.Fatal("DATABASE_URL is missing")
+	}
+
+	db.Init(dbURL)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("GLOBAL HIT:", r.URL.Path)
