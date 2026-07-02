@@ -5,12 +5,9 @@ import (
 	"net/http"
 
 	"iuno-api/services"
-	"iuno-api/utils"
 )
 
 func TrainerHandler(w http.ResponseWriter, r *http.Request) {
-
-	utils.EnableCORS(w)
 
 	words, err := services.GetTrainerWords()
 

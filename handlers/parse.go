@@ -5,12 +5,9 @@ import (
 	"net/http"
 
 	"iuno-api/services"
-	"iuno-api/utils"
 )
 
 func ParseHandler(w http.ResponseWriter, r *http.Request) {
-
-	utils.EnableCORS(w)
 
 	word := r.URL.Query().Get("word")
 	if word == "" {

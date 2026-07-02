@@ -8,7 +8,6 @@ import (
 	
 	"iuno-api/services/morphology"
 	"iuno-api/db"
-	"iuno-api/utils"
 )
 
 type SearchResult struct {
@@ -28,8 +27,6 @@ type SearchFormResult struct {
 }
 
 func SearchHandler(w http.ResponseWriter, r *http.Request) {
-
-	utils.EnableCORS(w)
 
 	// =====================================================
 	// GET QUERY
@@ -97,8 +94,6 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func SearchFormHandler(w http.ResponseWriter, r *http.Request) {
-
-	utils.EnableCORS(w)
 
 	// Get Query Word
 	query := r.URL.Query().Get("q")

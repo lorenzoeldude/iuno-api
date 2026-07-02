@@ -2,9 +2,6 @@ package handlers
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -15,19 +12,10 @@ import (
 	"iuno-api/db"
 	"iuno-api/models"
 	"iuno-api/utils"
+	"iuno-api/email"
 )
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
-
-	utils.EnableCORS(w)
-
-	// =====================================================
-	// CORS PRE-FLIGHT
-	// =====================================================
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
 
 	// =====================================================
 	// METHOD CHECK
@@ -102,9 +90,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// CREATE EMAIL VERIFICATION TOKEN
 	// =====================================================
-	tokenBytes := make([]byte, 32)
-
-	_, err = rand.Read(tokenBytes)
+	verificationToken, err := utils.GenerateVerificationToken()
 	if err != nil {
 
 		log.Println("TOKEN ERROR:", err)
@@ -118,10 +104,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	verificationToken := hex.EncodeToString(tokenBytes)
-
-	hash := sha256.Sum256([]byte(verificationToken))
-	verificationHash := hex.EncodeToString(hash[:])
+	verificationHash := utils.HashVerificationToken(verificationToken)
 
 	// =====================================================
 	// INSERT USER
@@ -134,9 +117,17 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 			username,
 			password_hash,
 			email_verified,
-			email_verification_hash
+			email_verification_hash,
+			email_verification_expires_at
 		)
-		VALUES ($1, $2, $3, FALSE, $4)
+		VALUES (
+			$1,
+			$2,
+			$3,
+			FALSE,
+			$4,
+			NOW() + INTERVAL '24 hours'
+		)
 		RETURNING id
 	`,
 		body.Email,
@@ -186,16 +177,20 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// =====================================================
-	// TODO: SEND EMAIL
+	// SEND VERIFICATION EMAIL
 	// =====================================================
-	log.Println(
-		"EMAIL VERIFICATION TOKEN:",
+	err = email.SendVerificationEmail(
+		body.Email,
 		verificationToken,
 	)
 
-	// Example verification URL:
-	//
-	// https://yourdomain.com/verify-email?token=<verificationToken>
+	if err != nil {
+
+		log.Println("EMAIL ERROR:", err)
+
+		// Don't fail the registration if the email couldn't be sent.
+		// The user can request another verification email later.
+	}
 
 	// =====================================================
 	// RESPONSE

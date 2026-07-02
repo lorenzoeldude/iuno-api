@@ -13,10 +13,6 @@ import (
 
 func GetWordListLemmasHandler(w http.ResponseWriter, r *http.Request) {
 
-	log.Println("HANDLER HIT")
-
-	utils.EnableCORS(w)
-
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return

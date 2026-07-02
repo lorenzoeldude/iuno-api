@@ -13,10 +13,6 @@ import (
 
 func ListTrainerHandler(w http.ResponseWriter, r *http.Request) {
 
-	utils.EnableCORS(w)
-
-	log.Println("METHOD:", r.Method)
-
 
 	if r.Method != http.MethodGet {
 

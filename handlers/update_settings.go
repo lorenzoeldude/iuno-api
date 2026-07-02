@@ -22,16 +22,6 @@ type UpdateSettingsRequest struct {
 
 func UpdateSettingsHandler(w http.ResponseWriter, r *http.Request) {
 
-	utils.EnableCORS(w)
-
-	// =====================================================
-	// PRE-FLIGHT
-	// =====================================================
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
 	// =====================================================
 	// METHOD CHECK
 	// =====================================================

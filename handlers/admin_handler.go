@@ -6,20 +6,10 @@ import (
 	"net/http"
 
 	"iuno-api/db"
-	"iuno-api/utils"
 )
 
 
 func GetUserCountHandler(w http.ResponseWriter, r *http.Request) {
-
-	utils.EnableCORS(w)
-
-	// CORS preflight
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
 
 	if r.Method != http.MethodGet {
 		http.Error(
@@ -62,15 +52,6 @@ func GetUserCountHandler(w http.ResponseWriter, r *http.Request) {
 
 
 func GetLemmaCountHandler(w http.ResponseWriter, r *http.Request) {
-
-	utils.EnableCORS(w)
-
-	// CORS preflight
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
 
 	if r.Method != http.MethodGet {
 		http.Error(

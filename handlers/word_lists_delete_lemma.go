@@ -13,8 +13,6 @@ import (
 
 func DeleteLemmaFromUserListHandler(w http.ResponseWriter, r *http.Request) {
 
-	utils.EnableCORS(w)
-
 	// =====================================================
 	// METHOD CHECK
 	// =====================================================

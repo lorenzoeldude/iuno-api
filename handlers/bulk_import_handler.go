@@ -3,11 +3,9 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"log"
 
 	"iuno-api/models"
 	"iuno-api/services"
-	"iuno-api/utils"
 )
 
 type BulkImportResponse struct {
@@ -18,9 +16,7 @@ type BulkImportResponse struct {
 
 func BulkImportHandler(w http.ResponseWriter, r *http.Request) {
 
-	utils.EnableCORS(w)
-
-	log.Println("bulk import hit")
+	// log.Println("bulk import hit")
 
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST required", http.StatusMethodNotAllowed)

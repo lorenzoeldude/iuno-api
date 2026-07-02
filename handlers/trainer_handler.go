@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"iuno-api/db"
-	"iuno-api/utils"
 )
 
 type TrainerQuestion struct {
@@ -22,8 +21,6 @@ type TrainerQuestion struct {
 }
 
 func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
-
-	utils.EnableCORS(w)
 
 	w.Header().Set("Content-Type", "application/json")
 

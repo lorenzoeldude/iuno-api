@@ -13,18 +13,6 @@ import (
 
 func AddLemmaToUserListHandler(w http.ResponseWriter, r *http.Request) {
 
-	log.Println("hello there")
-
-	utils.EnableCORS(w)
-
-	// =====================================================
-	// CORS PRE-FLIGHT
-	// =====================================================
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
 	// =====================================================
 	// METHOD CHECK
 	// =====================================================

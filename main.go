@@ -8,6 +8,7 @@ import (
 	"iuno-api/db"
 	"iuno-api/handlers"
 	"iuno-api/middleware"
+	"iuno-api/email"
 )
 
 func main() {
@@ -21,6 +22,11 @@ func main() {
 		log.Fatal("DATABASE_URL is missing")
 	}
 
+	email.Init()
+
+	key := os.Getenv("RESEND_API_KEY")
+	log.Printf("RESEND_API_KEY loaded: %v (length=%d)", key != "", len(key))
+
 	db.Init(dbURL)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -30,7 +36,12 @@ func main() {
 	// =====================================================
 	// DICTIONARY
 	// =====================================================
-	http.HandleFunc("/api/word/", handlers.WordHandler)
+	http.HandleFunc(
+		"/api/word/",
+		middleware.CORSMiddleware(
+			handlers.WordHandler,
+		),
+	)
 
 	// TEXTS
 	http.HandleFunc(
@@ -58,12 +69,22 @@ func main() {
 	// =====================================================
 	// SEARCH
 	// =====================================================
-	http.HandleFunc("/api/search", handlers.SearchFormHandler)
+	http.HandleFunc(
+		"/api/search",
+		middleware.CORSMiddleware(
+			handlers.SearchFormHandler,
+		),
+	)
 
 	// =====================================================
 	// TRAINER
 	// =====================================================
-	http.HandleFunc("/api/trainer/random", handlers.RandomTrainerHandler)
+	http.HandleFunc(
+		"/api/trainer/random",
+		middleware.CORSMiddleware(
+			handlers.RandomTrainerHandler,
+		),
+	)
 
 	http.HandleFunc(
 		"/api/trainer/list/random",
@@ -75,7 +96,12 @@ func main() {
 	// =====================================================
 	// MORPHOLOGY / PARSER
 	// =====================================================
-	http.HandleFunc("/api/parse", handlers.ParseHandler)
+	http.HandleFunc(
+		"/api/parse",
+		middleware.CORSMiddleware(
+			handlers.ParseHandler,
+		),
+	)
 
 	// =====================================================
 	// ADMIN
@@ -139,8 +165,19 @@ func main() {
 	// =====================================================
 	// AUTH
 	// =====================================================
-	http.HandleFunc("/api/auth/register", handlers.RegisterHandler)
-	http.HandleFunc("/api/auth/login", handlers.LoginHandler)
+	http.HandleFunc(
+		"/api/auth/register",
+		middleware.CORSMiddleware(
+			handlers.RegisterHandler,
+		),
+	)
+
+	http.HandleFunc(
+		"/api/auth/login",
+		middleware.CORSMiddleware(
+			handlers.LoginHandler,
+		),
+	)
 
 	// =====================================================
 	// USER SETTINGS
@@ -161,16 +198,20 @@ func main() {
 	// get user word lists
 	http.HandleFunc(
 		"/api/word-lists",
-		middleware.AuthMiddleware(
-			handlers.GetWordListsHandler,
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				handlers.GetWordListsHandler,
+			),
 		),
 	)
 
 	// create word list
 	http.HandleFunc(
 		"/api/word-lists/create",
-		middleware.AuthMiddleware(
-			handlers.CreateWordListHandler,
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				handlers.CreateWordListHandler,
+			),
 		),
 	)
 
@@ -247,6 +288,14 @@ func main() {
 					}
 				},
 			),
+		),
+	)
+
+	// EMAIL VERIFICATION
+	http.HandleFunc(
+		"/verify-email",
+		middleware.CORSMiddleware(
+			handlers.VerifyEmailHandler,
 		),
 	)
 

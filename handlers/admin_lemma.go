@@ -11,7 +11,6 @@ import (
 
 	"iuno-api/db"
 	"iuno-api/models"
-	"iuno-api/utils"
 	"iuno-api/services"
 )
 
@@ -21,16 +20,6 @@ type AdminLemmaRequest struct {
 }
 
 func UpsertLemmaHandler(w http.ResponseWriter, r *http.Request) {
-
-	utils.EnableCORS(w)
-
-	// =====================================================
-	// CORS PRE-FLIGHT
-	// =====================================================
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
 
 	// =====================================================
 	// METHOD CHECK

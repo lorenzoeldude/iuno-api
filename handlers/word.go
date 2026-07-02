@@ -4,19 +4,14 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-	// "context"
 	"log"
 
 	"iuno-api/models"
 	"iuno-api/services"
 	"iuno-api/services/morphology"
-	"iuno-api/utils"
-	// "iuno-api/db"
 )
 
 func WordHandler(w http.ResponseWriter, r *http.Request) {
-
-	utils.EnableCORS(w)
 
 	slug := strings.TrimPrefix(r.URL.Path, "/api/word/")
 	slug = strings.Trim(slug, "/")
@@ -38,14 +33,6 @@ func WordHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func WriteWordHandler(w http.ResponseWriter, r *http.Request) {
-
-	utils.EnableCORS(w)
-
-	// CORS PRE-FLIGHT
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
 
 	// METHOD CHECK
 	// =====================================================

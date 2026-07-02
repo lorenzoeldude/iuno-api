@@ -14,16 +14,6 @@ import (
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
-	utils.EnableCORS(w)
-
-	// =====================================================
-	// CORS PRE-FLIGHT
-	// =====================================================
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
 	// =====================================================
 	// METHOD CHECK
 	// =====================================================
@@ -69,6 +59,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			password_hash,
 			is_premium,
 			is_admin,
+			email_verified,
 			created_at
 		FROM users
 		WHERE email = $1
@@ -81,6 +72,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		&user.PasswordHash,
 		&user.IsPremium,
 		&user.IsAdmin,
+		&user.EmailVerified,
 		&user.CreatedAt,
 	)
 
@@ -109,6 +101,20 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			w,
 			"invalid email or password",
 			http.StatusUnauthorized,
+		)
+
+		return
+	}
+
+	// =====================================================
+	// CHECK EMAIL VERIFIED
+	// =====================================================
+	if !user.EmailVerified {
+
+		http.Error(
+			w,
+			"Please verify your email before logging in.",
+			http.StatusForbidden,
 		)
 
 		return
@@ -150,6 +156,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			"username":   user.Username,
 			"is_premium": user.IsPremium,
 			"is_admin": user.IsAdmin,
+			"email_verified": user.EmailVerified,
 		},
 	})
 }
