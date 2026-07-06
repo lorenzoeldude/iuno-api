@@ -2,7 +2,7 @@ package morphology
 
 import (
 	"strings"
-	
+
 	"iuno-api/models"
 )
 
@@ -12,6 +12,10 @@ import (
 
 func GenerateVerb(lemma models.Lemma) []models.Form {
 
+	if lemma.Conjugation == nil {
+		return []models.Form{}
+	}
+	
 	switch *lemma.Conjugation {
 		case 1:
 			return generateFirstConjugation(lemma)
@@ -44,7 +48,11 @@ func generateConjugation(
 	// STEMS
 	presentStem := removeVerbEnding(*lemma.Infinitive, infinitiveEnding)
 	perfectStem := removeVerbEnding(*lemma.Perfect, "ī")
-	ppp := pppStem(*lemma.Supine)
+	var ppp string
+
+	if lemma.Supine != nil {
+		ppp = pppStem(*lemma.Supine)
+	}
 
 	gerundStem := presentStem + gerundSuffix
 	gerundiveStem := buildGerundiveStem(lemma)
@@ -79,15 +87,18 @@ func generateConjugation(
 		)...,
 	)
 
-	forms = append(
-		forms,
-		generatePerfectPassiveParticiple(lemma, ppp)...,
-	)
+	if lemma.Supine != nil {
 
-	forms = append(
-		forms,
-		generateFutureActiveParticiple(lemma, ppp)...,
-	)
+		forms = append(
+			forms,
+			generatePerfectPassiveParticiple(lemma, ppp)...,
+		)
+
+		forms = append(
+			forms,
+			generateFutureActiveParticiple(lemma, ppp)...,
+		)
+	}
 
 	// FINITE FORMS
 	for _, pattern := range patterns {
@@ -128,17 +139,20 @@ func generateConjugation(
 	}
 
 	// PERFECT PASSIVE FORMS
-	for _, pattern := range ppPatterns {
+	if lemma.Supine != nil {
 
-		forms = append(
-			forms,
-			buildPerfectPassiveForms(
-				ppp,
-				pattern.Endings,
-				pattern.Tense,
-				pattern.Mood,
-			)...,
-		)
+		for _, pattern := range ppPatterns {
+
+			forms = append(
+				forms,
+				buildPerfectPassiveForms(
+					ppp,
+					pattern.Endings,
+					pattern.Tense,
+					pattern.Mood,
+				)...,
+			)
+		}
 	}
 
 	// IMPERATIVES

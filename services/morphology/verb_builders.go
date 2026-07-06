@@ -6,23 +6,31 @@ import (
 )
 
 // INFINITIVES (REUSABLE)
-func buildInfinitives(presentStem string, perfectStem string, ppp string, presentActiveEnding string, presentPassiveEnding string) []models.Form {
+func buildInfinitives(
+	presentStem string,
+	perfectStem string,
+	ppp string,
+	presentActiveEnding string,
+	presentPassiveEnding string,
+) []models.Form {
 
 	var forms []models.Form
 
-	// Active Infinitives
+	// Always available
 	forms = append(forms,
 		infinitiveForm(presentStem+presentActiveEnding, "present", "active"),
 		infinitiveForm(perfectStem+"isse", "perfect", "active"),
-		infinitiveForm(ppp+"ūrus esse", "future", "active"),
+		infinitiveForm(presentStem+presentPassiveEnding, "present", "passive"),
 	)
 
-	// Passive Infinitives
-	forms = append(forms,
-		infinitiveForm(presentStem+presentPassiveEnding, "present", "passive"),
-		infinitiveForm(ppp+"um esse", "perfect", "passive"),
-		infinitiveForm(ppp+"um īrī", "future", "passive"),
-	)
+	// Only if a supine exists
+	if ppp != "" {
+		forms = append(forms,
+			infinitiveForm(ppp+"ūrus esse", "future", "active"),
+			infinitiveForm(ppp+"um esse", "perfect", "passive"),
+			infinitiveForm(ppp+"um īrī", "future", "passive"),
+		)
+	}
 
 	return forms
 }
