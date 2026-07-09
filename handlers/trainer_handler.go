@@ -30,6 +30,7 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 	var lemma string
 	var lemmaNormalized string
 	var infinitive *string
+	var partOfSpeech string
 	var correct string
 
 	// =====================================================
@@ -39,12 +40,19 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 		SELECT
 			id,
 			lemma,
-			lemma_normalized, 
-			infinitive
+			lemma_normalized,
+			infinitive,
+			part_of_speech
 		FROM lemmas
 		ORDER BY RANDOM()
 		LIMIT 1
-	`).Scan(&lemmaID, &lemma, &lemmaNormalized, &infinitive)
+	`).Scan(
+		&lemmaID,
+		&lemma,
+		&lemmaNormalized,
+		&infinitive,
+		&partOfSpeech,
+	)
 
 	if err != nil {
 
@@ -127,12 +135,15 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 	// RANDOM WRONG ANSWERS
 	// =====================================================
 	rows, err := db.Pool.Query(context.Background(), `
-		SELECT meaning
-		FROM meanings
-		WHERE lemma_id != $1
+		SELECT m.meaning
+		FROM meanings m
+		JOIN lemmas l ON l.id = m.lemma_id
+		WHERE
+			m.lemma_id != $1
+			AND l.part_of_speech = $2
 		ORDER BY RANDOM()
-		LIMIT 20
-	`, lemmaID)
+		LIMIT 20;
+	`, lemmaID, partOfSpeech)
 
 	if err != nil {
 
