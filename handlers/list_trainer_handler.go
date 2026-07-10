@@ -56,6 +56,7 @@ func ListTrainerHandler(w http.ResponseWriter, r *http.Request) {
 	var lemma string
 	var lemmaNormalized string
 	var infinitive *string
+	var partOfSpeech string
 
 
 	err := db.Pool.QueryRow(r.Context(), `
@@ -63,7 +64,8 @@ func ListTrainerHandler(w http.ResponseWriter, r *http.Request) {
 			l.id,
 			l.lemma,
 			l.lemma_normalized,
-			l.infinitive
+			l.infinitive,
+			l.part_of_speech
 		FROM word_list_lemmas wll
 		JOIN word_lists wl 
 			ON wl.id = wll.list_id
@@ -79,6 +81,7 @@ func ListTrainerHandler(w http.ResponseWriter, r *http.Request) {
 		&lemma,
 		&lemmaNormalized,
 		&infinitive,
+		&partOfSpeech,
 	)
 
 
@@ -214,14 +217,17 @@ func ListTrainerHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 
 	rows, err := db.Pool.Query(r.Context(), `
-		SELECT meaning
-		FROM meanings
-		WHERE meaning IS NOT NULL
-		AND meaning != $1
+		SELECT m.meaning
+		FROM meanings m
+		JOIN lemmas l ON l.id = m.lemma_id
+		WHERE
+			m.lemma_id != $1
+			AND l.part_of_speech = $2
 		ORDER BY RANDOM()
 		LIMIT 20
 	`,
-		correct,
+		lemmaID,
+		partOfSpeech,
 	)
 
 
