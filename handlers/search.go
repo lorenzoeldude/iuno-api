@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
-	"log"
-	
-	"iuno-api/services/morphology"
+
 	"iuno-api/db"
+	"iuno-api/services/morphology"
 )
 
 type SearchResult struct {
@@ -17,13 +17,20 @@ type SearchResult struct {
 }
 
 type SearchFormResult struct {
-	Form 				string `json:"form"`
-	PartOfSpeech 		string `json:"part_of_speech"`
-	Lemma   			string `json:"lemma"`
-	Meaning   			string `json:"meaning"`
-	LemmaNormalized   	string `json:"lemma_normalized"`
-	GrammaticalCase 	*string `json:"grammatical_case"`
-	Tense 				*string `json:"tense"`
+	Form            string  `json:"form"`
+	PartOfSpeech    string  `json:"part_of_speech"`
+	Lemma           string  `json:"lemma"`
+	Meaning         string  `json:"meaning"`
+	LemmaNormalized string  `json:"lemma_normalized"`
+
+	GrammaticalCase *string `json:"grammatical_case"`
+	Number          *string `json:"number"`
+	Gender          *string `json:"gender"`
+
+	Tense  *string `json:"tense"`
+	Mood   *string `json:"mood"`
+	Voice  *string `json:"voice"`
+	Person *int    `json:"person"`
 }
 
 func SearchHandler(w http.ResponseWriter, r *http.Request) {
@@ -31,10 +38,10 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// GET QUERY
 	// =====================================================
+
 	query := r.URL.Query().Get("q")
 	query = strings.TrimSpace(strings.ToLower(query))
 
-	// empty query → return empty list
 	if query == "" {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode([]SearchResult{})
@@ -44,13 +51,15 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// DB QUERY
 	// =====================================================
+
 	rows, err := db.Pool.Query(r.Context(), `
-		SELECT 
+		SELECT
 			l.lemma,
 			COALESCE(MIN(m.meaning), '') AS meaning,
 			l.slug
 		FROM lemmas l
-		LEFT JOIN meanings m ON m.lemma_id = l.id
+		LEFT JOIN meanings m
+			ON m.lemma_id = l.id
 		WHERE LOWER(l.lemma) LIKE $1
 		GROUP BY l.id
 		ORDER BY l.lemma ASC
@@ -59,7 +68,7 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
-		log.Println("error searching form: ", err)
+		log.Println("error searching lemma:", err)
 		return
 	}
 	defer rows.Close()
@@ -67,6 +76,7 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// BUILD RESULTS
 	// =====================================================
+
 	results := []SearchResult{}
 
 	for rows.Next() {
@@ -89,20 +99,23 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// RESPONSE
 	// =====================================================
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(results)
 }
 
 func SearchFormHandler(w http.ResponseWriter, r *http.Request) {
 
-	// Get Query Word
+	// =====================================================
+	// GET QUERY
+	// =====================================================
+
 	query := r.URL.Query().Get("q")
 	query = strings.TrimSpace(strings.ToLower(query))
 
-	// empty query → return empty list
 	if query == "" {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode([]SearchResult{})
+		json.NewEncoder(w).Encode([]SearchFormResult{})
 		return
 	}
 
@@ -111,12 +124,18 @@ func SearchFormHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// DB QUERY
 	// =====================================================
+
 	rows, err := db.Pool.Query(r.Context(), `
 		SELECT
 			f.form,
 			f.part_of_speech,
 			f.grammatical_case,
+			f.number,
+			f.gender,
 			f.tense,
+			f.mood,
+			f.voice,
+			f.person,
 			l.lemma,
 			COALESCE(
 				(
@@ -137,7 +156,12 @@ func SearchFormHandler(w http.ResponseWriter, r *http.Request) {
 			f.form,
 			f.part_of_speech,
 			f.grammatical_case,
+			f.number,
+			f.gender,
 			f.tense,
+			f.mood,
+			f.voice,
+			f.person,
 			l.id,
 			l.lemma,
 			l.lemma_normalized
@@ -147,7 +171,7 @@ func SearchFormHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
-		log.Println("error searching form: ", err)
+		log.Println("error searching form:", err)
 		return
 	}
 	defer rows.Close()
@@ -155,6 +179,7 @@ func SearchFormHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// BUILD RESULTS
 	// =====================================================
+
 	results := []SearchFormResult{}
 
 	for rows.Next() {
@@ -165,7 +190,12 @@ func SearchFormHandler(w http.ResponseWriter, r *http.Request) {
 			&res.Form,
 			&res.PartOfSpeech,
 			&res.GrammaticalCase,
+			&res.Number,
+			&res.Gender,
 			&res.Tense,
+			&res.Mood,
+			&res.Voice,
+			&res.Person,
 			&res.Lemma,
 			&res.Meaning,
 			&res.LemmaNormalized,
@@ -181,6 +211,7 @@ func SearchFormHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// RESPONSE
 	// =====================================================
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(results)
 }
