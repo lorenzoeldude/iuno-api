@@ -32,7 +32,11 @@ func WriteWord(body models.WriteRequest) error {
 		SELECT id
 		FROM lemmas
 		WHERE lemma_normalized = $1
-	`, lemma.LemmaNormalized).Scan(&existingID)
+		AND part_of_speech = $2
+	`,
+		lemma.LemmaNormalized,
+		lemma.PartOfSpeech,
+	).Scan(&existingID)
 
 	if err == nil {
 
