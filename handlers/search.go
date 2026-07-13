@@ -20,7 +20,7 @@ type SearchFormResult struct {
 	Form            string  `json:"form"`
 	PartOfSpeech    string  `json:"part_of_speech"`
 	Lemma           string  `json:"lemma"`
-	Meaning         string  `json:"meaning"`
+	Meanings         []string  `json:"meanings"`
 	LemmaNormalized string  `json:"lemma_normalized"`
 
 	GrammaticalCase *string `json:"grammatical_case"`
@@ -139,14 +139,17 @@ func SearchFormHandler(w http.ResponseWriter, r *http.Request) {
 			l.lemma,
 			COALESCE(
 				(
-					SELECT meaning
-					FROM meanings
-					WHERE lemma_id = l.id
-					ORDER BY id
-					LIMIT 1
+					SELECT array_agg(meaning ORDER BY id)
+					FROM (
+						SELECT meaning, id
+						FROM meanings
+						WHERE lemma_id = l.id
+						ORDER BY id
+						LIMIT 3
+					) m
 				),
-				''
-			) AS meaning,
+				ARRAY[]::text[]
+			) AS meanings,
 			l.lemma_normalized
 		FROM forms f
 		JOIN lemmas l
@@ -197,7 +200,7 @@ func SearchFormHandler(w http.ResponseWriter, r *http.Request) {
 			&res.Voice,
 			&res.Person,
 			&res.Lemma,
-			&res.Meaning,
+			&res.Meanings,
 			&res.LemmaNormalized,
 		)
 
