@@ -93,6 +93,13 @@ func main() {
 		),
 	)
 
+	http.HandleFunc(
+		"/api/trainer/book/random",
+		middleware.CORSMiddleware(
+			handlers.BookTrainerHandler,
+		),
+	)
+
 	// =====================================================
 	// MORPHOLOGY / PARSER
 	// =====================================================
