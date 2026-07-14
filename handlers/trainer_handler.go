@@ -179,7 +179,7 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 		used[wrong] = true
 		answers = append(answers, wrong)
 
-		if len(answers) == 3 {
+		if len(answers) == 4 {
 			break
 		}
 	}
@@ -187,7 +187,7 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// SAFETY CHECK
 	// =====================================================
-	if len(answers) < 3 {
+	if len(answers) < 4 {
 
 		http.Error(
 			w,

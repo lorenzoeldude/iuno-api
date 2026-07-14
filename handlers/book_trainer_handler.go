@@ -277,7 +277,7 @@ func BookTrainerHandler(w http.ResponseWriter, r *http.Request) {
 
 
 
-		if len(answers) == 3 {
+		if len(answers) == 4 {
 
 			break
 
@@ -291,7 +291,7 @@ func BookTrainerHandler(w http.ResponseWriter, r *http.Request) {
 
 	// fallback
 
-	for len(answers) < 3 {
+	for len(answers) < 4 {
 
 		answers = append(
 			answers,
