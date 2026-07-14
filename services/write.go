@@ -28,15 +28,32 @@ func WriteWord(body models.WriteRequest) error {
 
 	var existingID int
 
-	err = tx.QueryRow(ctx, `
-		SELECT id
-		FROM lemmas
-		WHERE lemma_normalized = $1
-		AND part_of_speech = $2
-	`,
-		lemma.LemmaNormalized,
-		lemma.PartOfSpeech,
-	).Scan(&existingID)
+	if lemma.PartOfSpeech == "verb" {
+
+		err = tx.QueryRow(ctx, `
+			SELECT id
+			FROM lemmas
+			WHERE lemma_normalized = $1
+			AND part_of_speech = 'verb'
+			AND infinitive = $2
+		`,
+			lemma.LemmaNormalized,
+			nullString(lemma.Infinitive),
+		).Scan(&existingID)
+
+	} else {
+
+		err = tx.QueryRow(ctx, `
+			SELECT id
+			FROM lemmas
+			WHERE lemma_normalized = $1
+			AND part_of_speech = $2
+		`,
+			lemma.LemmaNormalized,
+			lemma.PartOfSpeech,
+		).Scan(&existingID)
+
+	}
 
 	if err == nil {
 
