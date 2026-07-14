@@ -46,6 +46,7 @@ func ListTrainerHandler(w http.ResponseWriter, r *http.Request) {
 
 	userID := claims.UserID
 
+	listID := r.URL.Query().Get("list_id")
 
 
 	// =====================================================
@@ -59,31 +60,63 @@ func ListTrainerHandler(w http.ResponseWriter, r *http.Request) {
 	var partOfSpeech string
 
 
-	err := db.Pool.QueryRow(r.Context(), `
-		SELECT
-			l.id,
-			l.lemma,
-			l.lemma_normalized,
-			l.infinitive,
-			l.part_of_speech
-		FROM word_list_lemmas wll
-		JOIN word_lists wl 
-			ON wl.id = wll.list_id
-		JOIN lemmas l 
-			ON l.id = wll.lemma_id
-		WHERE wl.user_id = $1
-		ORDER BY RANDOM()
-		LIMIT 1
-	`,
-		userID,
-	).Scan(
-		&lemmaID,
-		&lemma,
-		&lemmaNormalized,
-		&infinitive,
-		&partOfSpeech,
-	)
+	var err error
 
+	if listID != "" {
+
+		err = db.Pool.QueryRow(r.Context(), `
+			SELECT
+				l.id,
+				l.lemma,
+				l.lemma_normalized,
+				l.infinitive,
+				l.part_of_speech
+			FROM word_list_lemmas wll
+			JOIN word_lists wl
+				ON wl.id = wll.list_id
+			JOIN lemmas l
+				ON l.id = wll.lemma_id
+			WHERE wl.id = $1
+			ORDER BY RANDOM()
+			LIMIT 1
+		`,
+			listID,
+		).Scan(
+			&lemmaID,
+			&lemma,
+			&lemmaNormalized,
+			&infinitive,
+			&partOfSpeech,
+		)
+
+	} else {
+
+		err = db.Pool.QueryRow(r.Context(), `
+			SELECT
+				l.id,
+				l.lemma,
+				l.lemma_normalized,
+				l.infinitive,
+				l.part_of_speech
+			FROM word_list_lemmas wll
+			JOIN word_lists wl
+				ON wl.id = wll.list_id
+			JOIN lemmas l
+				ON l.id = wll.lemma_id
+			WHERE wl.user_id = $1
+			ORDER BY RANDOM()
+			LIMIT 1
+		`,
+			userID,
+		).Scan(
+			&lemmaID,
+			&lemma,
+			&lemmaNormalized,
+			&infinitive,
+			&partOfSpeech,
+		)
+
+	}
 
 	if err != nil {
 
