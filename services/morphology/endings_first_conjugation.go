@@ -266,14 +266,14 @@ var firstImperfectPassiveSubjunctive = VerbEndings{
 
 var firstPerfectPassiveSubjunctive = VerbEndings{
 	"singular": {
-		"first":  "rer",
-		"second": "rēris",
-		"third":  "rētur",
+		"first":  "sim",
+		"second": "sīs",
+		"third":  "sit",
 	},
 	"plural": {
-		"first":  "rēmur",
-		"second": "rēminī",
-		"third":  "rentur",
+		"first":  "sīmus",
+		"second": "sītis",
+		"third":  "sint",
 	},
 }
 
