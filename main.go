@@ -264,7 +264,7 @@ func main() {
 				switch r.Method {
 
 				case http.MethodGet:
-					handlers.GetLessonVocabularyHandler(w, r)
+    				handlers.GetLessonVocabularyTrainerHandler(w, r)
 
 				default:
 					http.Error(
