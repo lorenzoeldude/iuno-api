@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"iuno-api/db"
 	"iuno-api/handlers"
@@ -177,6 +178,92 @@ func main() {
 				),
 			),
 		),
+	)
+
+	// =====================================================
+	// LESSONS (ADMIN)
+	// =====================================================
+
+	http.HandleFunc(
+		"/api/admin/lessons/",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				middleware.AdminOnly(func(w http.ResponseWriter, r *http.Request) {
+
+					if strings.HasSuffix(r.URL.Path, "/vocabulary") {
+
+						switch r.Method {
+
+						case http.MethodGet:
+							handlers.GetLessonVocabularyHandler(w, r)
+
+						case http.MethodPut:
+							handlers.UpdateLessonVocabularyHandler(w, r)
+
+						default:
+							http.Error(
+								w,
+								"method not allowed",
+								http.StatusMethodNotAllowed,
+							)
+						}
+
+						return
+					}
+
+					switch r.Method {
+					case http.MethodGet:
+						handlers.GetLessonHandler(w, r)
+
+					case http.MethodPost:
+						handlers.CreateLessonHandler(w, r)
+
+					case http.MethodPut:
+						handlers.UpdateLessonHandler(w, r)
+
+					default:
+						http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+					}
+				}),
+			),
+		),
+	)
+
+	http.HandleFunc(
+		"/api/lessons/",
+		middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
+
+			if strings.HasSuffix(r.URL.Path, "/vocabulary") {
+
+				switch r.Method {
+
+				case http.MethodGet:
+					handlers.GetLessonVocabularyTrainerHandler(w, r)
+
+				default:
+					http.Error(
+						w,
+						"method not allowed",
+						http.StatusMethodNotAllowed,
+					)
+				}
+
+				return
+			}
+
+			switch r.Method {
+
+			case http.MethodGet:
+				handlers.GetLessonHandler(w, r)
+
+			default:
+				http.Error(
+					w,
+					"method not allowed",
+					http.StatusMethodNotAllowed,
+				)
+			}
+		}),
 	)
 
 	// =====================================================
