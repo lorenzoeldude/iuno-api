@@ -239,3 +239,67 @@ func UpdateLessonHandler(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(lesson)
 }
+
+func GetLessonsHandler(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	rows, err := db.Pool.Query(
+		context.Background(),
+		`
+		SELECT
+			id,
+			title,
+			is_published,
+			image
+		FROM lessons
+		ORDER BY id
+		`,
+	)
+
+	if err != nil {
+		http.Error(
+			w,
+			err.Error(),
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	defer rows.Close()
+
+	var lessons []models.Lesson
+
+	for rows.Next() {
+
+		var lesson models.Lesson
+
+		err := rows.Scan(
+			&lesson.ID,
+			&lesson.Title,
+			&lesson.IsPublished,
+			&lesson.Image,
+		)
+
+		if err != nil {
+			http.Error(
+				w,
+				err.Error(),
+				http.StatusInternalServerError,
+			)
+			return
+		}
+
+		lessons = append(lessons, lesson)
+	}
+
+	w.Header().Set(
+		"Content-Type",
+		"application/json",
+	)
+
+	json.NewEncoder(w).Encode(lessons)
+}

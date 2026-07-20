@@ -266,6 +266,13 @@ func main() {
 		}),
 	)
 
+	http.HandleFunc(
+		"/api/lessons",
+		middleware.CORSMiddleware(
+			handlers.GetLessonsHandler,
+		),
+	)
+
 	// =====================================================
 	// AUTH
 	// =====================================================
