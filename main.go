@@ -233,12 +233,16 @@ func main() {
 		"/api/lessons/",
 		middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
 
-			if strings.HasSuffix(r.URL.Path, "/vocabulary") {
+			// =====================================================
+			// LESSON TRAINER
+			// =====================================================
+
+			if strings.HasSuffix(r.URL.Path, "/trainer/random") {
 
 				switch r.Method {
 
 				case http.MethodGet:
-					handlers.GetLessonVocabularyTrainerHandler(w, r)
+					handlers.LessonTrainerHandler(w, r)
 
 				default:
 					http.Error(
@@ -250,6 +254,32 @@ func main() {
 
 				return
 			}
+
+			// =====================================================
+			// LESSON VOCABULARY
+			// =====================================================
+
+			if strings.HasSuffix(r.URL.Path, "/vocabulary") {
+
+				switch r.Method {
+
+				case http.MethodGet:
+					handlers.GetLessonVocabularyHandler(w, r)
+
+				default:
+					http.Error(
+						w,
+						"method not allowed",
+						http.StatusMethodNotAllowed,
+					)
+				}
+
+				return
+			}
+
+			// =====================================================
+			// LESSON
+			// =====================================================
 
 			switch r.Method {
 

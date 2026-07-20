@@ -399,3 +399,100 @@ func GetLessonVocabularyTrainerHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(questions)
 }
+
+func LessonTrainerHandler(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != http.MethodGet {
+		http.Error(
+			w,
+			"method not allowed",
+			http.StatusMethodNotAllowed,
+		)
+		return
+	}
+
+	idString := strings.TrimPrefix(
+		r.URL.Path,
+		"/api/lessons/",
+	)
+
+	idString = strings.TrimSuffix(
+		idString,
+		"/trainer/random",
+	)
+
+	lessonID, err := strconv.Atoi(idString)
+	if err != nil {
+		http.Error(
+			w,
+			"invalid lesson id",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	var lemmaID int
+	var lemma string
+	var lemmaNormalized string
+	var infinitive *string
+	var partOfSpeech string
+
+	err = db.Pool.QueryRow(
+		r.Context(),
+		`
+		SELECT
+			l.id,
+			l.lemma,
+			l.lemma_normalized,
+			l.infinitive,
+			l.part_of_speech
+		FROM lesson_vocabulary lv
+		JOIN lemmas l
+			ON l.id = lv.lemma_id
+		WHERE lv.lesson_id = $1
+		ORDER BY RANDOM()
+		LIMIT 1
+		`,
+		lessonID,
+	).Scan(
+		&lemmaID,
+		&lemma,
+		&lemmaNormalized,
+		&infinitive,
+		&partOfSpeech,
+	)
+
+	if err != nil {
+		http.Error(
+			w,
+			"no vocabulary found",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	question, err := BuildTrainerQuestion(
+		r.Context(),
+		lemmaID,
+		lemma,
+		lemmaNormalized,
+		infinitive,
+		partOfSpeech,
+	)
+
+	if err != nil {
+		http.Error(
+			w,
+			err.Error(),
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	w.Header().Set(
+		"Content-Type",
+		"application/json",
+	)
+
+	json.NewEncoder(w).Encode(question)
+}
