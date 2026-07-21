@@ -20,9 +20,10 @@ type Text struct {
 }
 
 type TextSection struct {
-	ID       int64  `json:"id"`
-	Position int    `json:"position"`
-	Title    string `json:"title"`
+	ID         int64  `json:"id"`
+	Position   int    `json:"position"`
+	Title      string `json:"title"`
+	WordListID *int   `json:"word_list_id"`
 }
 
 func TextHandler(w http.ResponseWriter, r *http.Request) {
@@ -81,7 +82,8 @@ func TextHandler(w http.ResponseWriter, r *http.Request) {
 		SELECT
 			id,
 			position,
-			title
+			title,
+			word_list_id
 		FROM text_sections
 		WHERE text_id = $1
 		ORDER BY position
@@ -106,6 +108,7 @@ func TextHandler(w http.ResponseWriter, r *http.Request) {
 			&section.ID,
 			&section.Position,
 			&section.Title,
+			&section.WordListID,
 		)
 
 		if err != nil {
