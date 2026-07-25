@@ -362,6 +362,11 @@ func buildNounForms(
 				if number == "singular" && c == "vocative" {
 					form = lemma.Lemma
 				}
+
+				// plural vocative = plural nominative
+				if number == "plural" && c == "vocative" {
+					form = stem + endings["plural"]["nominative"]
+				}
 			}
 
 

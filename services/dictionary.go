@@ -34,7 +34,8 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 			infinitive,
 			feminine,
 			neuter,
-			irregular
+			irregular,
+			is_proper
 		FROM lemmas
 		WHERE LOWER(lemma_normalized) = LOWER($1)
 	`, lemma_normalized).Scan(
@@ -52,6 +53,7 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 		&lemma.Feminine,
 		&lemma.Neuter,
 		&lemma.Irregular,
+		&lemma.IsProper,
 	)
 
 	if err != nil {
@@ -87,7 +89,8 @@ func GetWordByID(id int) (models.DictionaryResponse, error) {
 			infinitive,
 			feminine,
 			neuter,
-			irregular
+			irregular,
+			is_proper
 		FROM lemmas
 		WHERE id = $1
 	`, id).Scan(
@@ -105,6 +108,7 @@ func GetWordByID(id int) (models.DictionaryResponse, error) {
 		&lemma.Feminine,
 		&lemma.Neuter,
 		&lemma.Irregular,
+		&lemma.IsProper,
 	)
 
 	if err != nil {

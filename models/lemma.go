@@ -10,6 +10,7 @@ type Lemma struct {
 	Gender *string `json:"gender"`
 	Declension *int `json:"declension"`
 	Genitive *string `json:"genitive"`
+	IsProper  bool     `json:"is_proper"`
 
 	// ADJECTIVES
 	Feminine *string `json:"feminine"`
