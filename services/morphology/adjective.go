@@ -111,11 +111,35 @@ func buildMasculineAdjectiveForms(
 		},
 	}
 
-	return buildAdjectiveForms(
-		stem,
-		"masculine",
-		endings,
+	var forms []models.Form
+
+	// masculine nominative singular uses dictionary form
+	forms = append(forms, models.Form{
+		Form: lemma.Lemma,
+
+		PartOfSpeech: "adjective",
+
+		GrammaticalCase: StringPtr("nominative"),
+		Number:          "singular",
+		Gender:          StringPtr("masculine"),
+
+		Degree: StringPtr("positive"),
+
+		FormType: StringPtr("adjective"),
+	})
+
+	// remove nominative singular from normal generation
+	delete(endings["singular"], "nominative")
+
+	forms = append(forms,
+		buildAdjectiveForms(
+			stem,
+			"masculine",
+			endings,
+		)...,
 	)
+
+	return forms
 }
 
 // =====================================================
