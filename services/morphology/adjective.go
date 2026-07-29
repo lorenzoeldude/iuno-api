@@ -35,9 +35,10 @@ func GenerateAdjective(lemma models.Lemma) []models.Form {
             generateThirdDeclensionAdjective(lemma, stem)...)
 	}
 
-	forms = append(forms, buildComparativeForms(stem)...)
-
-	forms = append(forms, buildSuperlativeForms(stem, lemma.Lemma)...)
+	if lemma.Comparable != nil && *lemma.Comparable {
+		forms = append(forms, buildComparativeForms(stem)...)
+		forms = append(forms, buildSuperlativeForms(stem, lemma.Lemma)...)
+	}
 
 	return forms
 }

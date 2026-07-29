@@ -76,7 +76,8 @@ func WriteWord(body models.WriteRequest) error {
 				feminine = $12,
 				neuter = $13,
 				pronoun_type = $14,
-				is_proper = $15
+				is_proper = $15,
+				comparable = $16
 			WHERE id = $1
 		`,
 			lemma.ID,
@@ -94,6 +95,7 @@ func WriteWord(body models.WriteRequest) error {
 			nullString(lemma.Neuter),
 			nullString(lemma.PronounType),
 			lemma.IsProper,
+			nullBool(lemma.Comparable),
 		)
 
 		if err != nil {
@@ -119,10 +121,11 @@ func WriteWord(body models.WriteRequest) error {
 				feminine,
 				neuter,
 				pronoun_type,
-				is_proper
+				is_proper,
+				comparable
 			)
 			VALUES (
-				$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15
+				$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16
 			)
 			RETURNING id
 		`,
@@ -141,6 +144,7 @@ func WriteWord(body models.WriteRequest) error {
 			nullString(lemma.Neuter),
 			nullString(lemma.PronounType),
 			lemma.IsProper,
+			nullBool(lemma.Comparable),
 		).Scan(&lemma.ID)
 
 		if err != nil {
@@ -340,4 +344,11 @@ func nullInt(i *int) any {
 		return nil
 	}
 	return *i
+}
+
+func nullBool(b *bool) any {
+	if b == nil {
+		return nil
+	}
+	return *b
 }

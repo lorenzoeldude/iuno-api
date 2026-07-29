@@ -15,6 +15,7 @@ type Lemma struct {
 	// ADJECTIVES
 	Feminine *string `json:"feminine"`
 	Neuter *string `json:"neuter"`
+	Comparable *bool   `json:"comparable"`
 
 	// VERBS
 	Conjugation *int `json:"conjugation"`
