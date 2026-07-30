@@ -90,7 +90,7 @@ func buildGerundiveForms(lemma models.Lemma, gerundiveStem string) []models.Form
 
 	gerundiveForms = append(
 		gerundiveForms,
-		buildMasculineAdjectiveForms(lemma, gerundiveStem)...,
+		buildMasculineAdjectiveForms(gerundiveStem+"us", gerundiveStem)...,
 	)
 
 	gerundiveForms = append(
@@ -196,7 +196,7 @@ func generatePerfectPassiveParticiple(lemma models.Lemma, ppp string) []models.F
 	
 	pppForms = append(
 		pppForms,
-		buildMasculineAdjectiveForms(lemma, ppp)...,
+		buildMasculineAdjectiveForms(ppp+"us", ppp)...,
 	)
 
 	pppForms = append(
@@ -222,7 +222,7 @@ func generateFutureActiveParticiple(lemma models.Lemma, ppp string) []models.For
 
 	fapForms = append(
 		fapForms,
-		buildMasculineAdjectiveForms(lemma, futureActiveStem)...,
+		buildMasculineAdjectiveForms(futureActiveStem+"us", futureActiveStem)...,
 	)
 
 	fapForms = append(

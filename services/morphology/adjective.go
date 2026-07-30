@@ -58,7 +58,7 @@ func generateFirstSecondDeclensionAdjective(
 
 	forms = append(
 		forms,
-		buildMasculineAdjectiveForms(lemma, stem)...,
+		buildMasculineAdjectiveForms(lemma.Lemma, stem)...,
 	)
 
 	forms = append(
@@ -87,7 +87,7 @@ func generateFirstSecondDeclensionAdjective(
 // =====================================================
 
 func buildMasculineAdjectiveForms(
-	lemma models.Lemma,
+	nominative string,
 	stem string,
 ) []models.Form {
 
@@ -116,7 +116,7 @@ func buildMasculineAdjectiveForms(
 
 	// masculine nominative singular uses dictionary form
 	forms = append(forms, models.Form{
-		Form: lemma.Lemma,
+		Form: nominative,
 
 		PartOfSpeech: "adjective",
 
