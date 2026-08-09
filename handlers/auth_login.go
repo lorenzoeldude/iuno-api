@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -47,6 +48,11 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// =====================================================
+	// NORMALIZE EMAIL
+	// =====================================================
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+
+	// =====================================================
 	// FIND USER
 	// =====================================================
 	var user models.User
@@ -64,7 +70,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		FROM users
 		WHERE email = $1
 	`,
-		req.Email,
+		email,
 	).Scan(
 		&user.ID,
 		&user.Email,
@@ -151,12 +157,12 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		"token":  jwtToken,
 
 		"user": map[string]interface{}{
-			"id":         user.ID,
-			"email":      user.Email,
-			"username":   user.Username,
-			"is_premium": user.IsPremium,
-			"is_admin": user.IsAdmin,
-			"email_verified": user.EmailVerified,
+			"id":              user.ID,
+			"email":           user.Email,
+			"username":        user.Username,
+			"is_premium":      user.IsPremium,
+			"is_admin":        user.IsAdmin,
+			"email_verified":  user.EmailVerified,
 		},
 	})
 }
