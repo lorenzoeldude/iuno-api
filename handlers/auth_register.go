@@ -5,32 +5,43 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 
 	"iuno-api/db"
+	"iuno-api/email"
 	"iuno-api/models"
 	"iuno-api/utils"
-	"iuno-api/email"
 )
+
+var usernameRegex = regexp.MustCompile(`^[a-zA-Z0-9_]{3,20}$`)
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	// =====================================================
 	// METHOD CHECK
 	// =====================================================
+
 	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		http.Error(
+			w,
+			"method not allowed",
+			http.StatusMethodNotAllowed,
+		)
+
 		return
 	}
 
 	// =====================================================
 	// PARSE REQUEST
 	// =====================================================
+
 	var body models.RegisterRequest
 
 	err := json.NewDecoder(r.Body).Decode(&body)
+
 	if err != nil {
 
 		log.Println("JSON ERROR:", err)
@@ -47,12 +58,19 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// NORMALIZE INPUT
 	// =====================================================
-	body.Email = strings.TrimSpace(strings.ToLower(body.Email))
-	body.Username = strings.TrimSpace(strings.ToLower(body.Username))
+
+	body.Email = strings.TrimSpace(
+		strings.ToLower(body.Email),
+	)
+
+	// Don't TrimSpace the username.
+	// Spaces should be rejected, not silently removed.
+	body.Username = strings.ToLower(body.Username)
 
 	// =====================================================
 	// VALIDATION
 	// =====================================================
+
 	if body.Email == "" ||
 		body.Username == "" ||
 		body.Password == "" {
@@ -67,8 +85,35 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// =====================================================
+	// USERNAME VALIDATION
+	// =====================================================
+
+	if strings.ContainsAny(body.Username, " \t\n\r") {
+
+		http.Error(
+			w,
+			"no spaces allowed",
+			http.StatusBadRequest,
+		)
+
+		return
+	}
+
+	if !usernameRegex.MatchString(body.Username) {
+
+		http.Error(
+			w,
+			"username must be 3-20 characters and contain only letters, numbers, and underscores",
+			http.StatusBadRequest,
+		)
+
+		return
+	}
+
+	// =====================================================
 	// HASH PASSWORD
 	// =====================================================
+
 	passwordHash, err := bcrypt.GenerateFromPassword(
 		[]byte(body.Password),
 		bcrypt.DefaultCost,
@@ -90,7 +135,9 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// CREATE EMAIL VERIFICATION TOKEN
 	// =====================================================
+
 	verificationToken, err := utils.GenerateVerificationToken()
+
 	if err != nil {
 
 		log.Println("TOKEN ERROR:", err)
@@ -104,11 +151,14 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	verificationHash := utils.HashVerificationToken(verificationToken)
+	verificationHash := utils.HashVerificationToken(
+		verificationToken,
+	)
 
 	// =====================================================
 	// INSERT USER
 	// =====================================================
+
 	var userID int
 
 	err = db.Pool.QueryRow(context.Background(), `
@@ -152,6 +202,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// CREATE DEFAULT WORD LIST
 	// =====================================================
+
 	_, err = db.Pool.Exec(context.Background(), `
 		INSERT INTO word_lists (
 			user_id,
@@ -179,6 +230,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// SEND VERIFICATION EMAIL
 	// =====================================================
+
 	err = email.SendVerificationEmail(
 		body.Email,
 		verificationToken,
@@ -188,14 +240,20 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 		log.Println("EMAIL ERROR:", err)
 
-		// Don't fail the registration if the email couldn't be sent.
-		// The user can request another verification email later.
+		// Don't fail the registration if the email
+		// couldn't be sent.
+		// The user can request another verification
+		// email later.
 	}
 
 	// =====================================================
 	// RESPONSE
 	// =====================================================
-	w.Header().Set("Content-Type", "application/json")
+
+	w.Header().Set(
+		"Content-Type",
+		"application/json",
+	)
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":   "ok",

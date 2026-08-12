@@ -18,6 +18,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// METHOD CHECK
 	// =====================================================
+
 	if r.Method != http.MethodPost {
 
 		http.Error(
@@ -32,6 +33,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// PARSE REQUEST
 	// =====================================================
+
 	var req models.LoginRequest
 
 	err := json.NewDecoder(r.Body).Decode(&req)
@@ -48,13 +50,38 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// =====================================================
-	// NORMALIZE EMAIL
+	// NORMALIZE IDENTIFIER
 	// =====================================================
-	email := strings.ToLower(strings.TrimSpace(req.Email))
+
+	identifier := strings.ToLower(
+		strings.TrimSpace(req.Identifier),
+	)
+
+	// =====================================================
+	// VALIDATION
+	// =====================================================
+
+	if identifier == "" || req.Password == "" {
+
+		http.Error(
+			w,
+			"missing required fields",
+			http.StatusBadRequest,
+		)
+
+		return
+	}
 
 	// =====================================================
 	// FIND USER
+	//
+	// The identifier can be either:
+	//
+	// email    -> user@example.com
+	// username -> marcus_aelius
+	//
 	// =====================================================
+
 	var user models.User
 
 	err = db.Pool.QueryRow(context.Background(), `
@@ -68,9 +95,11 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			email_verified,
 			created_at
 		FROM users
-		WHERE email = $1
+		WHERE LOWER(email) = $1
+		   OR LOWER(username) = $1
+		LIMIT 1
 	`,
-		email,
+		identifier,
 	).Scan(
 		&user.ID,
 		&user.Email,
@@ -86,7 +115,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 		http.Error(
 			w,
-			"invalid email or password",
+			"invalid email/username or password",
 			http.StatusUnauthorized,
 		)
 
@@ -96,6 +125,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// CHECK PASSWORD
 	// =====================================================
+
 	err = bcrypt.CompareHashAndPassword(
 		[]byte(user.PasswordHash),
 		[]byte(req.Password),
@@ -105,7 +135,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 		http.Error(
 			w,
-			"invalid email or password",
+			"invalid email/username or password",
 			http.StatusUnauthorized,
 		)
 
@@ -115,6 +145,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// CHECK EMAIL VERIFIED
 	// =====================================================
+
 	if !user.EmailVerified {
 
 		http.Error(
@@ -129,6 +160,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// GENERATE JWT
 	// =====================================================
+
 	jwtToken, err := utils.GenerateJWT(
 		user.ID,
 		user.Username,
@@ -150,7 +182,11 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// RESPONSE
 	// =====================================================
-	w.Header().Set("Content-Type", "application/json")
+
+	w.Header().Set(
+		"Content-Type",
+		"application/json",
+	)
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status": "ok",
