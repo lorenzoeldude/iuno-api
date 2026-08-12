@@ -111,6 +111,100 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// =====================================================
+	// CHECK IF EMAIL ALREADY EXISTS
+	// =====================================================
+
+	var emailExists bool
+
+	err = db.Pool.QueryRow(
+		context.Background(),
+		`
+		SELECT EXISTS(
+			SELECT 1
+			FROM users
+			WHERE email = $1
+		)
+		`,
+		body.Email,
+	).Scan(&emailExists)
+
+	if err != nil {
+
+		log.Println("EMAIL CHECK ERROR:", err)
+
+		http.Error(
+			w,
+			"failed to create account",
+			http.StatusInternalServerError,
+		)
+
+		return
+	}
+
+	if emailExists {
+
+		w.Header().Set(
+			"Content-Type",
+			"application/json",
+		)
+
+		w.WriteHeader(http.StatusConflict)
+
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "email already exists",
+		})
+
+		return
+	}
+
+	// =====================================================
+	// CHECK IF USERNAME ALREADY EXISTS
+	// =====================================================
+
+	var usernameExists bool
+
+	err = db.Pool.QueryRow(
+		context.Background(),
+		`
+		SELECT EXISTS(
+			SELECT 1
+			FROM users
+			WHERE username = $1
+		)
+		`,
+		body.Username,
+	).Scan(&usernameExists)
+
+	if err != nil {
+
+		log.Println("USERNAME CHECK ERROR:", err)
+
+		http.Error(
+			w,
+			"failed to create account",
+			http.StatusInternalServerError,
+		)
+
+		return
+	}
+
+	if usernameExists {
+
+		w.Header().Set(
+			"Content-Type",
+			"application/json",
+		)
+
+		w.WriteHeader(http.StatusConflict)
+
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "username already exists",
+		})
+
+		return
+	}
+
+	// =====================================================
 	// HASH PASSWORD
 	// =====================================================
 
@@ -161,7 +255,9 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	var userID int
 
-	err = db.Pool.QueryRow(context.Background(), `
+	err = db.Pool.QueryRow(
+		context.Background(),
+		`
 		INSERT INTO users (
 			email,
 			username,
@@ -179,7 +275,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 			NOW() + INTERVAL '24 hours'
 		)
 		RETURNING id
-	`,
+		`,
 		body.Email,
 		body.Username,
 		string(passwordHash),
@@ -190,10 +286,14 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 		log.Println("REGISTER ERROR:", err)
 
+		// This can still happen if two requests
+		// try to register the same email/username
+		// simultaneously and the database has UNIQUE
+		// constraints on those columns.
 		http.Error(
 			w,
 			"email or username already exists",
-			http.StatusBadRequest,
+			http.StatusConflict,
 		)
 
 		return
@@ -203,13 +303,15 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	// CREATE DEFAULT WORD LIST
 	// =====================================================
 
-	_, err = db.Pool.Exec(context.Background(), `
+	_, err = db.Pool.Exec(
+		context.Background(),
+		`
 		INSERT INTO word_lists (
 			user_id,
 			name
 		)
 		VALUES ($1, $2)
-	`,
+		`,
 		userID,
 		"My Vocabulary",
 	)
