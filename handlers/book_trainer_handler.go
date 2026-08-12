@@ -11,7 +11,6 @@ import (
 
 func BookTrainerHandler(w http.ResponseWriter, r *http.Request) {
 
-
 	if r.Method != http.MethodGet {
 
 		http.Error(
@@ -30,7 +29,6 @@ func BookTrainerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
 	// =====================================================
 	// 1. PICK RANDOM LEMMA FROM USER LIST
 	// =====================================================
@@ -40,7 +38,6 @@ func BookTrainerHandler(w http.ResponseWriter, r *http.Request) {
 	var lemmaNormalized string
 	var infinitive *string
 	var partOfSpeech string
-
 
 	var err error
 
@@ -82,16 +79,11 @@ func BookTrainerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
-
-
-
 	// =====================================================
 	// 2. GET CORRECT MEANING
 	// =====================================================
 
 	var correct string
-
 
 	err = db.Pool.QueryRow(r.Context(), `
 		SELECT meaning
@@ -102,8 +94,6 @@ func BookTrainerHandler(w http.ResponseWriter, r *http.Request) {
 	`,
 		lemmaID,
 	).Scan(&correct)
-
-
 
 	if err != nil {
 
@@ -118,16 +108,11 @@ func BookTrainerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
-
-
-
 	// =====================================================
 	// 3. GET DEFINITION
 	// =====================================================
 
 	var definition string
-
 
 	err = db.Pool.QueryRow(r.Context(), `
 		SELECT definition
@@ -139,23 +124,15 @@ func BookTrainerHandler(w http.ResponseWriter, r *http.Request) {
 		lemmaID,
 	).Scan(&definition)
 
-
 	if err != nil {
-
 		definition = ""
-
 	}
-
-
-
-
 
 	// =====================================================
 	// 4. GET EXAMPLES
 	// =====================================================
 
 	examples := []string{}
-
 
 	exampleRows, err := db.Pool.Query(r.Context(), `
 		SELECT example
@@ -167,17 +144,13 @@ func BookTrainerHandler(w http.ResponseWriter, r *http.Request) {
 		lemmaID,
 	)
 
-
-
 	if err == nil {
 
 		defer exampleRows.Close()
 
-
 		for exampleRows.Next() {
 
 			var example string
-
 
 			if err := exampleRows.Scan(&example); err == nil {
 
@@ -191,10 +164,6 @@ func BookTrainerHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 	}
-
-
-
-
 
 	// =====================================================
 	// 5. GET WRONG ANSWERS
@@ -214,8 +183,6 @@ func BookTrainerHandler(w http.ResponseWriter, r *http.Request) {
 		partOfSpeech,
 	)
 
-
-
 	if err != nil {
 
 		log.Println("WRONG MEANINGS ERROR:", err)
@@ -229,44 +196,27 @@ func BookTrainerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
 	defer rows.Close()
-
-
 
 	answers := []string{
 		correct,
 	}
 
-
-
 	used := map[string]bool{
 		correct: true,
 	}
 
-
-
 	for rows.Next() {
-
 
 		var meaning string
 
-
 		if err := rows.Scan(&meaning); err != nil {
-
 			continue
-
 		}
-
-
 
 		if used[meaning] {
-
 			continue
-
 		}
-
-
 
 		used[meaning] = true
 
@@ -275,21 +225,14 @@ func BookTrainerHandler(w http.ResponseWriter, r *http.Request) {
 			meaning,
 		)
 
-
-
 		if len(answers) == 4 {
-
 			break
-
 		}
-
 	}
 
-
-
-
-
-	// fallback
+	// =====================================================
+	// FALLBACK
+	// =====================================================
 
 	for len(answers) < 4 {
 
@@ -299,10 +242,6 @@ func BookTrainerHandler(w http.ResponseWriter, r *http.Request) {
 		)
 
 	}
-
-
-
-
 
 	// =====================================================
 	// 6. SHUFFLE
@@ -318,10 +257,6 @@ func BookTrainerHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 
-
-
-
-
 	// =====================================================
 	// RESPONSE
 	// =====================================================
@@ -331,11 +266,12 @@ func BookTrainerHandler(w http.ResponseWriter, r *http.Request) {
 		"application/json",
 	)
 
-
 	json.NewEncoder(w).Encode(
 		TrainerQuestion{
 
 			Lemma: lemma,
+
+			LemmaID: lemmaID,
 
 			LemmaNormalized: lemmaNormalized,
 
@@ -351,5 +287,4 @@ func BookTrainerHandler(w http.ResponseWriter, r *http.Request) {
 
 		},
 	)
-
 }

@@ -11,13 +11,14 @@ import (
 )
 
 type TrainerQuestion struct {
-	Lemma      string   `json:"lemma"`
+	Lemma           string   `json:"lemma"`
+	LemmaID         int      `json:"lemma_id"`
 	LemmaNormalized string   `json:"lemma_normalized"`
-	Infinitive *string `json:"infinitive"`
-	Correct    string   `json:"correct"`
-	Answers    []string `json:"answers"`
-	Definition string   `json:"definition"`
-	Examples   []string `json:"examples"`
+	Infinitive      *string  `json:"infinitive"`
+	Correct         string   `json:"correct"`
+	Answers         []string `json:"answers"`
+	Definition      string   `json:"definition"`
+	Examples        []string `json:"examples"`
 }
 
 func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
@@ -202,19 +203,18 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 	// SHUFFLE ANSWERS
 	// =====================================================
 	rand.Shuffle(len(answers), func(i, j int) {
-
 		answers[i], answers[j] = answers[j], answers[i]
-
 	})
 
 	question := TrainerQuestion{
-		Lemma:      lemma,
+		Lemma:           lemma,
+		LemmaID:         lemmaID,
 		LemmaNormalized: lemmaNormalized,
-		Infinitive: infinitive,
-		Correct:    correct,
-		Answers:    answers,
-		Definition: definition,
-		Examples:   examples,
+		Infinitive:      infinitive,
+		Correct:         correct,
+		Answers:         answers,
+		Definition:      definition,
+		Examples:        examples,
 	}
 
 	// =====================================================

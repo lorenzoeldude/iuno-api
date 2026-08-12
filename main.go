@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"iuno-api/db"
+	"iuno-api/email"
 	"iuno-api/handlers"
 	"iuno-api/middleware"
-	"iuno-api/email"
 )
 
 func main() {
@@ -17,6 +17,7 @@ func main() {
 	// =====================================================
 	// INIT DATABASE
 	// =====================================================
+
 	dbURL := os.Getenv("DATABASE_URL")
 
 	if dbURL == "" {
@@ -26,7 +27,11 @@ func main() {
 	email.Init()
 
 	key := os.Getenv("RESEND_API_KEY")
-	log.Printf("RESEND_API_KEY loaded: %v (length=%d)", key != "", len(key))
+	log.Printf(
+		"RESEND_API_KEY loaded: %v (length=%d)",
+		key != "",
+		len(key),
+	)
 
 	db.Init(dbURL)
 
@@ -37,6 +42,7 @@ func main() {
 	// =====================================================
 	// DICTIONARY
 	// =====================================================
+
 	http.HandleFunc(
 		"/api/word/",
 		middleware.CORSMiddleware(
@@ -44,7 +50,10 @@ func main() {
 		),
 	)
 
+	// =====================================================
 	// TEXTS
+	// =====================================================
+
 	http.HandleFunc(
 		"/api/texts",
 		middleware.CORSMiddleware(
@@ -66,10 +75,10 @@ func main() {
 		),
 	)
 
-
 	// =====================================================
 	// SEARCH
 	// =====================================================
+
 	http.HandleFunc(
 		"/api/search",
 		middleware.CORSMiddleware(
@@ -80,6 +89,7 @@ func main() {
 	// =====================================================
 	// TRAINER
 	// =====================================================
+
 	http.HandleFunc(
 		"/api/trainer/random",
 		middleware.CORSMiddleware(
@@ -90,7 +100,9 @@ func main() {
 	http.HandleFunc(
 		"/api/trainer/list/random",
 		middleware.CORSMiddleware(
-			middleware.AuthMiddleware(handlers.ListTrainerHandler),
+			middleware.AuthMiddleware(
+				handlers.ListTrainerHandler,
+			),
 		),
 	)
 
@@ -102,8 +114,31 @@ func main() {
 	)
 
 	// =====================================================
+	// TRAINING STATS
+	// =====================================================
+
+	http.HandleFunc(
+		"/api/training/stats",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				handlers.GetTrainingStatsHandler,
+			),
+		),
+	)
+
+	http.HandleFunc(
+		"/api/training/attempt",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				handlers.RecordTrainingAttemptHandler,
+			),
+		),
+	)
+
+	// =====================================================
 	// MORPHOLOGY / PARSER
 	// =====================================================
+
 	http.HandleFunc(
 		"/api/parse",
 		middleware.CORSMiddleware(
@@ -114,6 +149,7 @@ func main() {
 	// =====================================================
 	// LOOKUP
 	// =====================================================
+
 	http.HandleFunc(
 		"/api/lookup",
 		middleware.CORSMiddleware(
@@ -188,17 +224,57 @@ func main() {
 		"/api/admin/lessons/",
 		middleware.CORSMiddleware(
 			middleware.AuthMiddleware(
-				middleware.AdminOnly(func(w http.ResponseWriter, r *http.Request) {
+				middleware.AdminOnly(
+					func(w http.ResponseWriter, r *http.Request) {
 
-					if strings.HasSuffix(r.URL.Path, "/vocabulary") {
+						// =====================================================
+						// LESSON VOCABULARY
+						// =====================================================
+
+						if strings.HasSuffix(
+							r.URL.Path,
+							"/vocabulary",
+						) {
+
+							switch r.Method {
+
+							case http.MethodGet:
+								handlers.GetLessonVocabularyHandler(
+									w,
+									r,
+								)
+
+							case http.MethodPut:
+								handlers.UpdateLessonVocabularyHandler(
+									w,
+									r,
+								)
+
+							default:
+								http.Error(
+									w,
+									"method not allowed",
+									http.StatusMethodNotAllowed,
+								)
+							}
+
+							return
+						}
+
+						// =====================================================
+						// ADMIN LESSON
+						// =====================================================
 
 						switch r.Method {
 
 						case http.MethodGet:
-							handlers.GetLessonVocabularyHandler(w, r)
+							handlers.GetLessonHandler(w, r)
+
+						case http.MethodPost:
+							handlers.CreateLessonHandler(w, r)
 
 						case http.MethodPut:
-							handlers.UpdateLessonVocabularyHandler(w, r)
+							handlers.UpdateLessonHandler(w, r)
 
 						default:
 							http.Error(
@@ -207,94 +283,16 @@ func main() {
 								http.StatusMethodNotAllowed,
 							)
 						}
-
-						return
-					}
-
-					switch r.Method {
-					case http.MethodGet:
-						handlers.GetLessonHandler(w, r)
-
-					case http.MethodPost:
-						handlers.CreateLessonHandler(w, r)
-
-					case http.MethodPut:
-						handlers.UpdateLessonHandler(w, r)
-
-					default:
-						http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-					}
-				}),
+					},
+				),
 			),
 		),
 	)
 
-	http.HandleFunc(
-		"/api/lessons/",
-		middleware.CORSMiddleware(func(w http.ResponseWriter, r *http.Request) {
-
-			// =====================================================
-			// LESSON TRAINER
-			// =====================================================
-
-			if strings.HasSuffix(r.URL.Path, "/trainer/random") {
-
-				switch r.Method {
-
-				case http.MethodGet:
-					handlers.LessonTrainerHandler(w, r)
-
-				default:
-					http.Error(
-						w,
-						"method not allowed",
-						http.StatusMethodNotAllowed,
-					)
-				}
-
-				return
-			}
-
-			// =====================================================
-			// LESSON VOCABULARY
-			// =====================================================
-
-			if strings.HasSuffix(r.URL.Path, "/vocabulary") {
-
-				switch r.Method {
-
-				case http.MethodGet:
-    				handlers.GetLessonVocabularyTrainerHandler(w, r)
-
-				default:
-					http.Error(
-						w,
-						"method not allowed",
-						http.StatusMethodNotAllowed,
-					)
-				}
-
-				return
-			}
-
-			// =====================================================
-			// LESSON
-			// =====================================================
-
-			switch r.Method {
-
-			case http.MethodGet:
-				handlers.GetLessonHandler(w, r)
-
-			default:
-				http.Error(
-					w,
-					"method not allowed",
-					http.StatusMethodNotAllowed,
-				)
-			}
-		}),
-	)
+	// =====================================================
+	// LESSONS - PUBLIC LIST
+	// GET /api/lessons
+	// =====================================================
 
 	http.HandleFunc(
 		"/api/lessons",
@@ -304,8 +302,135 @@ func main() {
 	)
 
 	// =====================================================
+	// LESSONS - PUBLIC / USER
+	// =====================================================
+
+	http.HandleFunc(
+		"/api/lessons/",
+		middleware.CORSMiddleware(
+			func(w http.ResponseWriter, r *http.Request) {
+
+				// =====================================================
+				// LESSON PROGRESS
+				// GET /api/lessons/{id}/progress
+				// PUT /api/lessons/{id}/progress
+				// =====================================================
+
+				if strings.HasSuffix(
+					r.URL.Path,
+					"/progress",
+				) {
+
+					middleware.AuthMiddleware(
+						func(w http.ResponseWriter, r *http.Request) {
+
+							switch r.Method {
+
+							case http.MethodGet:
+								handlers.GetLessonProgressHandler(
+									w,
+									r,
+								)
+
+							case http.MethodPut:
+								handlers.UpdateLessonProgressHandler(
+									w,
+									r,
+								)
+
+							default:
+								http.Error(
+									w,
+									"method not allowed",
+									http.StatusMethodNotAllowed,
+								)
+							}
+						},
+					)(w, r)
+
+					return
+				}
+
+				// =====================================================
+				// LESSON TRAINER
+				// GET /api/lessons/{id}/trainer/random
+				// =====================================================
+
+				if strings.HasSuffix(
+					r.URL.Path,
+					"/trainer/random",
+				) {
+
+					switch r.Method {
+
+					case http.MethodGet:
+						handlers.LessonTrainerHandler(w, r)
+
+					default:
+						http.Error(
+							w,
+							"method not allowed",
+							http.StatusMethodNotAllowed,
+						)
+					}
+
+					return
+				}
+
+				// =====================================================
+				// LESSON VOCABULARY
+				// GET /api/lessons/{id}/vocabulary
+				// =====================================================
+
+				if strings.HasSuffix(
+					r.URL.Path,
+					"/vocabulary",
+				) {
+
+					switch r.Method {
+
+					case http.MethodGet:
+						handlers.GetLessonVocabularyTrainerHandler(
+							w,
+							r,
+						)
+
+					default:
+						http.Error(
+							w,
+							"method not allowed",
+							http.StatusMethodNotAllowed,
+						)
+					}
+
+					return
+				}
+
+				// =====================================================
+				// LESSON
+				// GET /api/lessons/{id}
+				// =====================================================
+
+				switch r.Method {
+
+				case http.MethodGet:
+					handlers.GetLessonHandler(w, r)
+
+				default:
+					http.Error(
+						w,
+						"method not allowed",
+						http.StatusMethodNotAllowed,
+					)
+				}
+			},
+		),
+	)
+
+	// =====================================================
 	// AUTH
 	// =====================================================
+
 	http.HandleFunc(
 		"/api/auth/register",
 		middleware.CORSMiddleware(
@@ -323,6 +448,7 @@ func main() {
 	// =====================================================
 	// USER SETTINGS
 	// =====================================================
+
 	http.HandleFunc(
 		"/api/settings",
 		middleware.CORSMiddleware(
@@ -336,7 +462,6 @@ func main() {
 	// WORD LISTS
 	// =====================================================
 
-	// get user word lists
 	http.HandleFunc(
 		"/api/word-lists",
 		middleware.CORSMiddleware(
@@ -346,7 +471,6 @@ func main() {
 		),
 	)
 
-	// create word list
 	http.HandleFunc(
 		"/api/word-lists/create",
 		middleware.CORSMiddleware(
@@ -356,7 +480,6 @@ func main() {
 		),
 	)
 
-	// add lemma to list
 	http.HandleFunc(
 		"/api/word-lists/add-lemma",
 		middleware.CORSMiddleware(
@@ -366,7 +489,6 @@ func main() {
 		),
 	)
 
-	// get lemmas inside a list
 	http.HandleFunc(
 		"/api/word-lists/lemmas",
 		middleware.CORSMiddleware(
@@ -380,6 +502,7 @@ func main() {
 	// LEMMA CHECK + DELETE
 	// /api/word-lists/lemma/:id
 	// =====================================================
+
 	http.HandleFunc(
 		"/api/word-lists/lemma/",
 		middleware.CORSMiddleware(
@@ -392,7 +515,10 @@ func main() {
 						handlers.CheckLemmaSavedHandler(w, r)
 
 					case http.MethodDelete:
-						handlers.DeleteLemmaFromUserListHandler(w, r)
+						handlers.DeleteLemmaFromUserListHandler(
+							w,
+							r,
+						)
 
 					default:
 						http.Error(
@@ -409,6 +535,7 @@ func main() {
 	// =====================================================
 	// ACCOUNT
 	// =====================================================
+
 	http.HandleFunc(
 		"/api/account",
 		middleware.CORSMiddleware(
@@ -432,7 +559,10 @@ func main() {
 		),
 	)
 
+	// =====================================================
 	// EMAIL VERIFICATION
+	// =====================================================
+
 	http.HandleFunc(
 		"/verify-email",
 		middleware.CORSMiddleware(
@@ -440,23 +570,37 @@ func main() {
 		),
 	)
 
+	// =====================================================
 	// HEALTH
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	})
+	// =====================================================
+
+	http.HandleFunc(
+		"/health",
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+		},
+	)
 
 	// =====================================================
 	// START SERVER
 	// =====================================================
+
 	port := os.Getenv("PORT")
+
 	if port == "" {
 		port = "8080"
 	}
 
-	log.Printf("Server running on port %s", port)
+	log.Printf(
+		"Server running on port %s",
+		port,
+	)
 
 	log.Fatal(
-		http.ListenAndServe(":"+port, nil),
+		http.ListenAndServe(
+			":"+port,
+			nil,
+		),
 	)
 }

@@ -133,21 +133,34 @@ func BuildTrainerQuestion(
 		}
 	}
 
+	// =====================================================
+	// FILL MISSING ANSWERS
+	// =====================================================
+
 	for len(answers) < 4 {
 		answers = append(answers, "—")
 	}
+
+	// =====================================================
+	// SHUFFLE ANSWERS
+	// =====================================================
 
 	rand.Shuffle(len(answers), func(i, j int) {
 		answers[i], answers[j] = answers[j], answers[i]
 	})
 
+	// =====================================================
+	// RETURN QUESTION
+	// =====================================================
+
 	return &TrainerQuestion{
-		Lemma:            lemma,
-		LemmaNormalized:  lemmaNormalized,
-		Infinitive:       infinitive,
-		Correct:          correct,
-		Answers:          answers,
-		Definition:       definition,
+		Lemma:           lemma,
+		LemmaID:         lemmaID,
+		LemmaNormalized: lemmaNormalized,
+		Infinitive:      infinitive,
+		Correct:         correct,
+		Answers:         answers,
+		Definition:      definition,
 		Examples:         examples,
 	}, nil
 }
