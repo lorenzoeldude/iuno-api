@@ -82,7 +82,7 @@ func AnonymousTrainerMiddleware(next http.HandlerFunc) http.HandlerFunc {
 				Value:    anonymousID,
 				Path:     "/",
 				HttpOnly: true,
-				SameSite: http.SameSiteLaxMode,
+				SameSite: http.SameSiteNoneMode,
 				Secure:   true,
 				MaxAge:   60 * 60 * 24 * 365,
 			})
