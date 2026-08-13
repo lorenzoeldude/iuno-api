@@ -10,6 +10,7 @@ import (
 	"iuno-api/email"
 	"iuno-api/handlers"
 	"iuno-api/middleware"
+	"iuno-api/stripe"
 )
 
 func main() {
@@ -34,10 +35,57 @@ func main() {
 	)
 
 	db.Init(dbURL)
+	stripe.Init()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("GLOBAL HIT:", r.URL.Path)
 	})
+
+	// =====================================================
+	// STRIPE
+	// =====================================================
+
+	http.HandleFunc(
+		"/api/stripe/create-checkout-session",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				handlers.CreateCheckoutSessionHandler,
+			),
+		),
+	)
+
+	http.HandleFunc(
+		"/api/stripe/webhook",
+		middleware.CORSMiddleware(
+			handlers.StripeWebhookHandler,
+		),
+	)
+
+	// =====================================================
+	// STRIPE CUSTOMER PORTAL
+	// =====================================================
+
+	http.HandleFunc(
+		"/api/stripe/create-portal-session",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				handlers.CreateStripePortalSessionHandler,
+			),
+		),
+	)
+
+	// =====================================================
+	// BILLING STATUS
+	// =====================================================
+
+	http.HandleFunc(
+		"/api/billing/status",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				handlers.GetBillingStatusHandler,
+			),
+		),
+	)
 
 	// =====================================================
 	// DICTIONARY
@@ -93,14 +141,16 @@ func main() {
 	http.HandleFunc(
 		"/api/trainer/random",
 		middleware.CORSMiddleware(
-			handlers.RandomTrainerHandler,
+			middleware.AnonymousTrainerMiddleware(
+				handlers.RandomTrainerHandler,
+			),
 		),
 	)
 
 	http.HandleFunc(
 		"/api/trainer/list/random",
 		middleware.CORSMiddleware(
-			middleware.AuthMiddleware(
+			middleware.AnonymousTrainerMiddleware(
 				handlers.ListTrainerHandler,
 			),
 		),
@@ -109,7 +159,9 @@ func main() {
 	http.HandleFunc(
 		"/api/trainer/book/random",
 		middleware.CORSMiddleware(
-			handlers.BookTrainerHandler,
+			middleware.AnonymousTrainerMiddleware(
+				handlers.BookTrainerHandler,
+			),
 		),
 	)
 
@@ -361,18 +413,24 @@ func main() {
 					"/trainer/random",
 				) {
 
-					switch r.Method {
+					middleware.AnonymousTrainerMiddleware(
+						func(w http.ResponseWriter, r *http.Request) {
 
-					case http.MethodGet:
-						handlers.LessonTrainerHandler(w, r)
+							switch r.Method {
 
-					default:
-						http.Error(
-							w,
-							"method not allowed",
-							http.StatusMethodNotAllowed,
-						)
-					}
+							case http.MethodGet:
+								handlers.LessonTrainerHandler(w, r)
+
+							default:
+								http.Error(
+									w,
+									"method not allowed",
+									http.StatusMethodNotAllowed,
+								)
+							}
+
+						},
+					)(w, r)
 
 					return
 				}

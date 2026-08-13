@@ -20,6 +20,11 @@ func CORSMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 		}
 
+		w.Header().Set(
+			"Access-Control-Allow-Credentials",
+			"true",
+		)
+
 		// =====================================================
 		// CORS HEADERS
 		// =====================================================

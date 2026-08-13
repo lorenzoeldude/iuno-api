@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"iuno-api/db"
+	"iuno-api/middleware"
 )
 
 type TrainerQuestion struct {
@@ -25,6 +26,48 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
+	// =====================================================
+	// ANONYMOUS DAILY LIMIT
+	// =====================================================
+
+	const anonymousDailyLimit = 10
+
+	anonymousID, ok := r.Context().Value(
+		middleware.AnonymousTrainerIDKey,
+	).(string)
+
+	if ok && anonymousID != "" {
+
+		var questionsAnswered int
+
+		err := db.Pool.QueryRow(
+			context.Background(),
+			`
+			SELECT questions_answered
+			FROM anonymous_trainer_daily_usage
+			WHERE anonymous_id = $1
+			  AND usage_date = CURRENT_DATE
+			`,
+			anonymousID,
+		).Scan(&questionsAnswered)
+
+		if err != nil {
+			// No row yet = 0 questions today.
+			questionsAnswered = 0
+		}
+
+		if questionsAnswered >= anonymousDailyLimit {
+
+			http.Error(
+				w,
+				"daily anonymous training limit reached",
+				http.StatusTooManyRequests,
+			)
+
+			return
+		}
+	}
+
 	rand.Seed(time.Now().UnixNano())
 
 	var lemmaID int
@@ -37,6 +80,7 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// RANDOM LEMMA
 	// =====================================================
+
 	err := db.Pool.QueryRow(context.Background(), `
 		SELECT
 			id,
@@ -69,6 +113,7 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// FIRST MEANING OF LEMMA
 	// =====================================================
+
 	err = db.Pool.QueryRow(context.Background(), `
 		SELECT meaning
 		FROM meanings
@@ -91,6 +136,7 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// FIRST DEFINITION OF LEMMA
 	// =====================================================
+
 	var definition string
 
 	err = db.Pool.QueryRow(context.Background(), `
@@ -108,6 +154,7 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// FIRST 3 EXAMPLES
 	// =====================================================
+
 	examples := []string{}
 
 	exampleRows, err := db.Pool.Query(context.Background(), `
@@ -135,6 +182,7 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// RANDOM WRONG ANSWERS
 	// =====================================================
+
 	rows, err := db.Pool.Query(context.Background(), `
 		SELECT m.meaning
 		FROM meanings m
@@ -188,6 +236,7 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// SAFETY CHECK
 	// =====================================================
+
 	if len(answers) < 4 {
 
 		http.Error(
@@ -202,6 +251,7 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 	// =====================================================
 	// SHUFFLE ANSWERS
 	// =====================================================
+
 	rand.Shuffle(len(answers), func(i, j int) {
 		answers[i], answers[j] = answers[j], answers[i]
 	})
@@ -218,7 +268,47 @@ func RandomTrainerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// =====================================================
+	// RECORD ANONYMOUS USAGE
+	// =====================================================
+
+	anonymousID, ok = r.Context().Value(
+		middleware.AnonymousTrainerIDKey,
+	).(string)
+
+	if ok && anonymousID != "" {
+
+		_, err := db.Pool.Exec(
+			context.Background(),
+			`
+			INSERT INTO anonymous_trainer_daily_usage (
+				anonymous_id,
+				usage_date,
+				questions_answered
+			)
+			VALUES ($1, CURRENT_DATE, 1)
+			ON CONFLICT (anonymous_id, usage_date)
+			DO UPDATE SET
+				questions_answered =
+					anonymous_trainer_daily_usage.questions_answered + 1
+			`,
+			anonymousID,
+		)
+
+		if err != nil {
+
+			http.Error(
+				w,
+				"failed to record anonymous training usage",
+				http.StatusInternalServerError,
+			)
+
+			return
+		}
+	}
+
+	// =====================================================
 	// RESPONSE
 	// =====================================================
+
 	json.NewEncoder(w).Encode(question)
 }
