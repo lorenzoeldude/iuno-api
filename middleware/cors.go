@@ -8,6 +8,7 @@ func CORSMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		// =====================================================
 		// ALLOWED ORIGINS
 		// =====================================================
+
 		origin := r.Header.Get("Origin")
 
 		allowedOrigins := map[string]bool{
@@ -17,17 +18,27 @@ func CORSMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		if allowedOrigins[origin] {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-		}
 
-		w.Header().Set(
-			"Access-Control-Allow-Credentials",
-			"true",
-		)
+			w.Header().Set(
+				"Access-Control-Allow-Origin",
+				origin,
+			)
+
+			w.Header().Set(
+				"Access-Control-Allow-Credentials",
+				"true",
+			)
+
+			w.Header().Set(
+				"Vary",
+				"Origin",
+			)
+		}
 
 		// =====================================================
 		// CORS HEADERS
 		// =====================================================
+
 		w.Header().Set(
 			"Access-Control-Allow-Methods",
 			"GET, POST, PUT, DELETE, OPTIONS",
@@ -38,23 +49,26 @@ func CORSMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			"Content-Type, Authorization",
 		)
 
-		// Allow browsers to cache preflight responses
 		w.Header().Set(
 			"Access-Control-Max-Age",
 			"86400",
 		)
 
 		// =====================================================
-		// PRE-FLIGHT REQUEST
+		// PRE-FLIGHT
 		// =====================================================
+
 		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusOK)
+
+			w.WriteHeader(http.StatusNoContent)
+
 			return
 		}
 
 		// =====================================================
-		// NEXT HANDLER
+		// CONTINUE
 		// =====================================================
+
 		next.ServeHTTP(w, r)
 	}
 }
