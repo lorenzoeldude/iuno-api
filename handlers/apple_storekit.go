@@ -1,9 +1,7 @@
 package handlers
 
 import (
-	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -15,38 +13,6 @@ import (
 
 type AppleStoreKitTransactionRequest struct {
 	SignedTransaction string `json:"signed_transaction"`
-}
-
-// =====================================================
-// APPLE TRANSACTION PAYLOAD
-// =====================================================
-//
-// This represents the decoded payload inside Apple's
-// signed transaction JWS.
-//
-// IMPORTANT:
-// The JWS is decoded here for development/testing.
-// Before using this in production, we should also
-// cryptographically verify the JWS against Apple's
-// certificate chain / public keys.
-// =====================================================
-
-type AppleTransactionPayload struct {
-	TransactionID         string `json:"transactionId"`
-	OriginalTransactionID string `json:"originalTransactionId"`
-
-	ProductID string `json:"productId"`
-
-	PurchaseDate int64 `json:"purchaseDate"`
-	ExpiresDate  int64 `json:"expiresDate"`
-
-	RevocationDate *int64 `json:"revocationDate"`
-
-	Type string `json:"type"`
-
-	InAppOwnershipType string `json:"inAppOwnershipType"`
-
-	Environment string `json:"environment"`
 }
 
 // =====================================================
@@ -152,10 +118,16 @@ func AppleStoreKitTransactionHandler(
 	)
 
 	// =====================================================
-	// DECODE JWS PAYLOAD
+	// DECODE APPLE JWS
+	// =====================================================
+	//
+	// Apple JWS handling lives in:
+	//
+	// utils/apple_jws.go
+	//
 	// =====================================================
 
-	payload, err := decodeAppleTransaction(
+	payload, err := utils.DecodeAppleTransaction(
 		req.SignedTransaction,
 	)
 
@@ -209,6 +181,11 @@ func AppleStoreKitTransactionHandler(
 	)
 
 	log.Printf(
+		"Transaction Reason: %s",
+		payload.TransactionReason,
+	)
+
+	log.Printf(
 		"Environment: %s",
 		payload.Environment,
 	)
@@ -237,6 +214,34 @@ func AppleStoreKitTransactionHandler(
 		)
 	}
 
+	if payload.Price != nil {
+
+		log.Printf(
+			"Apple Price: %d milliunits",
+			*payload.Price,
+		)
+
+	}
+
+	if payload.Currency != nil {
+
+		log.Printf(
+			"Currency: %s",
+			*payload.Currency,
+		)
+
+	}
+
+	log.Printf(
+		"Storefront: %s",
+		payload.Storefront,
+	)
+
+	log.Printf(
+		"Storefront ID: %s",
+		payload.StorefrontID,
+	)
+
 	log.Printf(
 		"========================================",
 	)
@@ -262,6 +267,38 @@ func AppleStoreKitTransactionHandler(
 		)
 
 		return
+	}
+
+	// =====================================================
+	// CHECK ENVIRONMENT
+	// =====================================================
+
+	switch payload.Environment {
+
+	case "Xcode":
+
+		log.Printf(
+			"Apple StoreKit: Xcode transaction",
+		)
+
+	case "Sandbox":
+
+		log.Printf(
+			"Apple StoreKit: Sandbox transaction",
+		)
+
+	case "Production":
+
+		log.Printf(
+			"Apple StoreKit: Production transaction",
+		)
+
+	default:
+
+		log.Printf(
+			"Apple StoreKit: unknown environment: %s",
+			payload.Environment,
+		)
 	}
 
 	// =====================================================
@@ -364,6 +401,9 @@ func AppleStoreKitTransactionHandler(
 			provider_subscription_id
 		)
 		DO UPDATE SET
+			user_id =
+				EXCLUDED.user_id,
+
 			product_id =
 				EXCLUDED.product_id,
 
@@ -375,6 +415,9 @@ func AppleStoreKitTransactionHandler(
 
 			current_period_end =
 				EXCLUDED.current_period_end,
+
+			cancel_at_period_end =
+				EXCLUDED.cancel_at_period_end,
 
 			updated_at =
 				now()
@@ -413,76 +456,141 @@ func AppleStoreKitTransactionHandler(
 	)
 
 	// =====================================================
-	// SAVE PAYMENT TRANSACTION
+	// PAYMENT AMOUNT
 	// =====================================================
 	//
-	// Apple signed transaction payload does not contain
-	// the localized purchase price.
+	// Apple provides price in milliunits.
 	//
-	// For now we store amount = 0.
-	// The product_id identifies the purchased product.
+	// Example:
 	//
-	// Later we can add proper App Store price handling.
+	// 4990 milliunits = $4.99
+	//
+	// Our payment_transactions.amount is stored in cents:
+	//
+	// 4990 / 10 = 499 cents
+	//
 	// =====================================================
 
-	_, err = tx.Exec(
-		r.Context(),
-		`
-		INSERT INTO payment_transactions (
-			user_id,
-			provider,
-			provider_transaction_id,
-			product_id,
-			amount,
-			currency,
-			status
-		)
-		VALUES (
-			$1,
-			'apple',
-			$2,
-			$3,
-			$4,
-			$5,
-			$6
-		)
-		ON CONFLICT (
-			provider,
-			provider_transaction_id
-		)
-		DO UPDATE SET
-			product_id = EXCLUDED.product_id,
-			status = EXCLUDED.status
-		`,
-		claims.UserID,
-		payload.TransactionID,
-		payload.ProductID,
-		0,
-		"USD",
-		appleSubscriptionStatus(isPremium),
-	)
+	amount := 0
+	currency := "USD"
 
-	if err != nil {
+	if payload.Price != nil {
 
-		log.Printf(
-			"Apple StoreKit: failed to save payment transaction: %v",
-			err,
+		amount = int(
+			*payload.Price / 10,
 		)
+	}
 
-		http.Error(
-			w,
-			"failed to save payment transaction",
-			http.StatusInternalServerError,
-		)
+	if payload.Currency != nil &&
+		*payload.Currency != "" {
 
-		return
+		currency = *payload.Currency
 	}
 
 	log.Printf(
-		"Apple StoreKit: payment transaction saved for user %d, transaction %s",
-		claims.UserID,
-		payload.TransactionID,
+		"Apple StoreKit: payment amount = %d %s cents",
+		amount,
+		currency,
 	)
+
+	// =====================================================
+	// SAVE PAYMENT TRANSACTION
+	// =====================================================
+	//
+	// Xcode StoreKit transactions use:
+	//
+	// transactionId = "0"
+	//
+	// These are local test transactions and should NOT
+	// be treated as real payment transactions.
+	//
+	// Sandbox and Production transactions have real
+	// transaction IDs and are persisted.
+	//
+	// =====================================================
+
+	if payload.TransactionID != "" &&
+		payload.TransactionID != "0" {
+
+		_, err = tx.Exec(
+			r.Context(),
+			`
+			INSERT INTO payment_transactions (
+				user_id,
+				provider,
+				provider_transaction_id,
+				product_id,
+				amount,
+				currency,
+				status
+			)
+			VALUES (
+				$1,
+				'apple',
+				$2,
+				$3,
+				$4,
+				$5,
+				$6
+			)
+			ON CONFLICT (
+				provider,
+				provider_transaction_id
+			)
+			DO UPDATE SET
+				user_id =
+					EXCLUDED.user_id,
+
+				product_id =
+					EXCLUDED.product_id,
+
+				amount =
+					EXCLUDED.amount,
+
+				currency =
+					EXCLUDED.currency,
+
+				status =
+					EXCLUDED.status
+			`,
+			claims.UserID,
+			payload.TransactionID,
+			payload.ProductID,
+			amount,
+			currency,
+			appleSubscriptionStatus(
+				isPremium,
+			),
+		)
+
+		if err != nil {
+
+			log.Printf(
+				"Apple StoreKit: failed to save payment transaction: %v",
+				err,
+			)
+
+			http.Error(
+				w,
+				"failed to save payment transaction",
+				http.StatusInternalServerError,
+			)
+
+			return
+		}
+
+		log.Printf(
+			"Apple StoreKit: payment transaction saved for user %d, transaction %s",
+			claims.UserID,
+			payload.TransactionID,
+		)
+
+	} else {
+
+		log.Printf(
+			"Apple StoreKit: Xcode transaction detected - payment transaction not persisted",
+		)
+	}
 
 	// =====================================================
 	// UPDATE USER PREMIUM
@@ -569,106 +677,6 @@ func AppleStoreKitTransactionHandler(
 			"environment": payload.Environment,
 		},
 	)
-}
-
-// =====================================================
-// DECODE APPLE JWS
-// =====================================================
-
-func decodeAppleTransaction(
-	jws string,
-) (*AppleTransactionPayload, error) {
-
-	parts := splitJWS(jws)
-
-	if len(parts) != 3 {
-
-		return nil, fmt.Errorf(
-			"invalid JWS: expected 3 parts, got %d",
-			len(parts),
-		)
-	}
-
-	payloadBytes, err := base64.RawURLEncoding.DecodeString(
-		parts[1],
-	)
-
-	if err != nil {
-
-		return nil, fmt.Errorf(
-			"failed to decode JWS payload: %w",
-			err,
-		)
-	}
-
-	var payload AppleTransactionPayload
-
-	if err := json.Unmarshal(
-		payloadBytes,
-		&payload,
-	); err != nil {
-
-		return nil, fmt.Errorf(
-			"failed to parse Apple transaction payload: %w",
-			err,
-		)
-	}
-
-	if payload.TransactionID == "" {
-
-		return nil, fmt.Errorf(
-			"transactionId missing",
-		)
-	}
-
-	if payload.OriginalTransactionID == "" {
-
-		return nil, fmt.Errorf(
-			"originalTransactionId missing",
-		)
-	}
-
-	if payload.ProductID == "" {
-
-		return nil, fmt.Errorf(
-			"productId missing",
-		)
-	}
-
-	return &payload, nil
-}
-
-// =====================================================
-// SPLIT JWS
-// =====================================================
-
-func splitJWS(
-	jws string,
-) []string {
-
-	var parts []string
-
-	start := 0
-
-	for i := 0; i < len(jws); i++ {
-
-		if jws[i] == '.' {
-
-			parts = append(
-				parts,
-				jws[start:i],
-			)
-
-			start = i + 1
-		}
-	}
-
-	parts = append(
-		parts,
-		jws[start:],
-	)
-
-	return parts
 }
 
 // =====================================================

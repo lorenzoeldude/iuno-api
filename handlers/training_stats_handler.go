@@ -57,6 +57,7 @@ func GetTrainingStatsHandler(w http.ResponseWriter, r *http.Request) {
 		CurrentStreak     int     `json:"currentStreak"`
 		LongestStreak     int     `json:"longestStreak"`
 		Sestertii         int     `json:"sestertii"`
+		LessonsCompleted  int     `json:"lessonsCompleted"`
 		LastTrainedAt     *string `json:"lastTrainedAt"`
 	}
 
@@ -130,6 +131,39 @@ func GetTrainingStatsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(
 			w,
 			"failed to get user sestertii",
+			http.StatusInternalServerError,
+		)
+
+		return
+	}
+
+	// =====================================================
+	// GET COMPLETED LESSONS
+	//
+	// A lesson is considered completed when Examinatio
+	// has been completed.
+	// =====================================================
+
+	err = db.Pool.QueryRow(
+		r.Context(),
+		`
+		SELECT COUNT(*)
+		FROM user_lesson_progress
+		WHERE user_id = $1
+		  AND examinatio_completed = true
+		`,
+		userID,
+	).Scan(
+		&stats.LessonsCompleted,
+	)
+
+	if err != nil {
+
+		log.Println("GET COMPLETED LESSONS ERROR:", err)
+
+		http.Error(
+			w,
+			"failed to get completed lessons",
 			http.StatusInternalServerError,
 		)
 
@@ -326,7 +360,7 @@ func GetTrainingStatsHandler(w http.ResponseWriter, r *http.Request) {
 
 		http.Error(
 			w,
-			"failed to read longest training streak",
+			"failed to read longest streak",
 			http.StatusInternalServerError,
 		)
 
