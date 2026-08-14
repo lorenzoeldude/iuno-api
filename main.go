@@ -88,6 +88,19 @@ func main() {
 	)
 
 	// =====================================================
+	// APPLE STOREKIT
+	// =====================================================
+
+	http.HandleFunc(
+		"/api/apple/storekit/transaction",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				handlers.AppleStoreKitTransactionHandler,
+			),
+		),
+	)
+
+	// =====================================================
 	// DICTIONARY
 	// =====================================================
 
