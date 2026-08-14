@@ -413,6 +413,78 @@ func AppleStoreKitTransactionHandler(
 	)
 
 	// =====================================================
+	// SAVE PAYMENT TRANSACTION
+	// =====================================================
+	//
+	// Apple signed transaction payload does not contain
+	// the localized purchase price.
+	//
+	// For now we store amount = 0.
+	// The product_id identifies the purchased product.
+	//
+	// Later we can add proper App Store price handling.
+	// =====================================================
+
+	_, err = tx.Exec(
+		r.Context(),
+		`
+		INSERT INTO payment_transactions (
+			user_id,
+			provider,
+			provider_transaction_id,
+			product_id,
+			amount,
+			currency,
+			status
+		)
+		VALUES (
+			$1,
+			'apple',
+			$2,
+			$3,
+			$4,
+			$5,
+			$6
+		)
+		ON CONFLICT (
+			provider,
+			provider_transaction_id
+		)
+		DO UPDATE SET
+			product_id = EXCLUDED.product_id,
+			status = EXCLUDED.status
+		`,
+		claims.UserID,
+		payload.TransactionID,
+		payload.ProductID,
+		0,
+		"USD",
+		appleSubscriptionStatus(isPremium),
+	)
+
+	if err != nil {
+
+		log.Printf(
+			"Apple StoreKit: failed to save payment transaction: %v",
+			err,
+		)
+
+		http.Error(
+			w,
+			"failed to save payment transaction",
+			http.StatusInternalServerError,
+		)
+
+		return
+	}
+
+	log.Printf(
+		"Apple StoreKit: payment transaction saved for user %d, transaction %s",
+		claims.UserID,
+		payload.TransactionID,
+	)
+
+	// =====================================================
 	// UPDATE USER PREMIUM
 	// =====================================================
 
