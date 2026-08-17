@@ -7,9 +7,9 @@ import (
 )
 
 type WordOfTheDay struct {
-	Lemma           string `json:"lemma"`
-	LemmaNormalized string `json:"lemma_normalized"`
-	Meaning         string `json:"meaning"`
+	Lemma           string   `json:"lemma"`
+	LemmaNormalized string   `json:"lemma_normalized"`
+	Meanings        []string `json:"meanings"`
 }
 
 func GetToday(ctx context.Context) (*WordOfTheDay, error) {
@@ -22,13 +22,15 @@ func GetToday(ctx context.Context) (*WordOfTheDay, error) {
 		SELECT
 			l.lemma,
 			l.lemma_normalized,
-			(
-				SELECT d.definition
-				FROM definitions d
-				WHERE d.lemma_id = l.id
-				ORDER BY d.sort_order ASC, d.id ASC
-				LIMIT 1
-			) AS meaning
+			COALESCE(
+				ARRAY(
+					SELECT m.meaning
+					FROM meanings m
+					WHERE m.lemma_id = l.id
+					ORDER BY m.sort_order ASC, m.id ASC
+				),
+				ARRAY[]::text[]
+			) AS meanings
 		FROM word_of_the_day w
 		JOIN lemmas l
 			ON l.id = w.lemma_id
@@ -37,7 +39,7 @@ func GetToday(ctx context.Context) (*WordOfTheDay, error) {
 	).Scan(
 		&word.Lemma,
 		&word.LemmaNormalized,
-		&word.Meaning,
+		&word.Meanings,
 	)
 
 	if err != nil {
