@@ -1,8 +1,8 @@
-package handlers
+package stripehandlers
 
 import (
-	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -20,6 +20,12 @@ type CreateCheckoutSessionRequest struct {
 
 func CreateCheckoutSessionHandler(w http.ResponseWriter, r *http.Request) {
 
+	log.Printf(
+		"CreateCheckoutSessionHandler REACHED: method=%s path=%s",
+		r.Method,
+		r.URL.Path,
+	)
+
 	if r.Method != http.MethodPost {
 		http.Error(
 			w,
@@ -29,11 +35,13 @@ func CreateCheckoutSessionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ctx := r.Context()
+
 	// =====================================================
 	// GET AUTHENTICATED USER
 	// =====================================================
 
-	claims, ok := r.Context().Value(
+	claims, ok := ctx.Value(
 		middleware.UserContextKey,
 	).(*utils.Claims)
 
@@ -45,6 +53,11 @@ func CreateCheckoutSessionHandler(w http.ResponseWriter, r *http.Request) {
 		)
 		return
 	}
+
+	log.Printf(
+		"CreateCheckoutSession: authenticated user_id=%d",
+		claims.UserID,
+	)
 
 	// =====================================================
 	// PARSE REQUEST
@@ -69,6 +82,30 @@ func CreateCheckoutSessionHandler(w http.ResponseWriter, r *http.Request) {
 		)
 		return
 	}
+
+	// =====================================================
+	// GET OR CREATE STRIPE CUSTOMER
+	// =====================================================
+
+	customerID, err := GetOrCreateStripeCustomer(
+		ctx,
+		claims.UserID,
+	)
+
+	if err != nil {
+		http.Error(
+			w,
+			"failed to create Stripe customer",
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	log.Printf(
+		"CreateCheckoutSession: user_id=%d stripe_customer_id=%s",
+		claims.UserID,
+		customerID,
+	)
 
 	// =====================================================
 	// CHECKOUT URLS
@@ -96,6 +133,8 @@ func CreateCheckoutSessionHandler(w http.ResponseWriter, r *http.Request) {
 
 		SuccessURL: stripeSDK.String(successURL),
 		CancelURL:  stripeSDK.String(cancelURL),
+
+		Customer: stripeSDK.String(customerID),
 	}
 
 	// =====================================================
@@ -110,7 +149,7 @@ func CreateCheckoutSessionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// =====================================================
-	// ATTACH IUNO DATA TO STRIPE SESSION
+	// CHECKOUT SESSION METADATA
 	// =====================================================
 
 	params.Metadata = map[string]string{
@@ -119,11 +158,23 @@ func CreateCheckoutSessionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// =====================================================
+	// SUBSCRIPTION METADATA
+	// =====================================================
+
+	params.SubscriptionData =
+		&stripeSDK.CheckoutSessionCreateSubscriptionDataParams{
+			Metadata: map[string]string{
+				"user_id":  strconv.Itoa(claims.UserID),
+				"price_id": req.PriceID,
+			},
+		}
+
+	// =====================================================
 	// CREATE SESSION
 	// =====================================================
 
 	session, err := stripe.Client.V1CheckoutSessions.Create(
-		context.Background(),
+		ctx,
 		params,
 	)
 
@@ -145,8 +196,12 @@ func CreateCheckoutSessionHandler(w http.ResponseWriter, r *http.Request) {
 		"application/json",
 	)
 
-	json.NewEncoder(w).Encode(map[string]string{
-		"checkout_url": session.URL,
-		"session_id":   session.ID,
-	})
+	w.WriteHeader(http.StatusOK)
+
+	_ = json.NewEncoder(w).Encode(
+		map[string]string{
+			"checkout_url": session.URL,
+			"session_id":   session.ID,
+		},
+	)
 }

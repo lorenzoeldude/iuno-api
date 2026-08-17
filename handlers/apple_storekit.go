@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"iuno-api/db"
 	"iuno-api/middleware"
+	"iuno-api/storekit"
 	"iuno-api/utils"
 )
 
@@ -120,16 +120,11 @@ func AppleStoreKitTransactionHandler(
 	// =====================================================
 	// DECODE APPLE JWS
 	// =====================================================
-	//
-	// Apple JWS handling lives in:
-	//
-	// utils/apple_jws.go
-	//
-	// =====================================================
 
-	payload, err := utils.DecodeAppleTransaction(
-		req.SignedTransaction,
-	)
+	decodedPayload, err :=
+		utils.DecodeAppleTransaction(
+			req.SignedTransaction,
+		)
 
 	if err != nil {
 
@@ -148,6 +143,46 @@ func AppleStoreKitTransactionHandler(
 	}
 
 	// =====================================================
+	// VALIDATE PRODUCT
+	// =====================================================
+
+	if !storekit.IsValidProduct(
+		decodedPayload.ProductID,
+	) {
+
+		log.Printf(
+			"Apple StoreKit: unknown product ID: %s",
+			decodedPayload.ProductID,
+		)
+
+		http.Error(
+			w,
+			"unknown product",
+			http.StatusBadRequest,
+		)
+
+		return
+	}
+
+	// =====================================================
+	// CREATE TRANSACTION
+	// =====================================================
+
+	transaction :=
+		&storekit.Transaction{
+			Payload: decodedPayload,
+		}
+
+	// =====================================================
+	// PREMIUM STATUS
+	// =====================================================
+
+	isPremium :=
+		storekit.IsPremium(
+			decodedPayload,
+		)
+
+	// =====================================================
 	// LOG TRANSACTION
 	// =====================================================
 
@@ -162,49 +197,55 @@ func AppleStoreKitTransactionHandler(
 
 	log.Printf(
 		"Transaction ID: %s",
-		payload.TransactionID,
+		decodedPayload.TransactionID,
 	)
 
 	log.Printf(
 		"Original Transaction ID: %s",
-		payload.OriginalTransactionID,
+		decodedPayload.OriginalTransactionID,
 	)
 
 	log.Printf(
 		"Product ID: %s",
-		payload.ProductID,
+		decodedPayload.ProductID,
 	)
 
 	log.Printf(
 		"Transaction Type: %s",
-		payload.Type,
+		decodedPayload.Type,
 	)
 
 	log.Printf(
 		"Transaction Reason: %s",
-		payload.TransactionReason,
+		decodedPayload.TransactionReason,
 	)
 
 	log.Printf(
 		"Environment: %s",
-		payload.Environment,
+		decodedPayload.Environment,
 	)
 
 	log.Printf(
 		"Purchase Date: %s",
-		formatAppleDate(payload.PurchaseDate),
+		formatAppleDate(
+			decodedPayload.PurchaseDate,
+		),
 	)
 
 	log.Printf(
 		"Expiration Date: %s",
-		formatAppleDate(payload.ExpiresDate),
+		formatAppleDate(
+			decodedPayload.ExpiresDate,
+		),
 	)
 
-	if payload.RevocationDate != nil {
+	if decodedPayload.RevocationDate != nil {
 
 		log.Printf(
 			"Revocation Date: %s",
-			formatAppleDate(*payload.RevocationDate),
+			formatAppleDate(
+				*decodedPayload.RevocationDate,
+			),
 		)
 
 	} else {
@@ -214,32 +255,37 @@ func AppleStoreKitTransactionHandler(
 		)
 	}
 
-	if payload.Price != nil {
+	if decodedPayload.Price != nil {
 
 		log.Printf(
 			"Apple Price: %d milliunits",
-			*payload.Price,
+			*decodedPayload.Price,
 		)
 
 	}
 
-	if payload.Currency != nil {
+	if decodedPayload.Currency != nil {
 
 		log.Printf(
 			"Currency: %s",
-			*payload.Currency,
+			*decodedPayload.Currency,
 		)
 
 	}
 
 	log.Printf(
 		"Storefront: %s",
-		payload.Storefront,
+		decodedPayload.Storefront,
 	)
 
 	log.Printf(
 		"Storefront ID: %s",
-		payload.StorefrontID,
+		decodedPayload.StorefrontID,
+	)
+
+	log.Printf(
+		"Premium Status: %v",
+		isPremium,
 	)
 
 	log.Printf(
@@ -247,107 +293,13 @@ func AppleStoreKitTransactionHandler(
 	)
 
 	// =====================================================
-	// VALIDATE PRODUCT
-	// =====================================================
-
-	if payload.ProductID !=
-		"com.iunoni.premium.monthly" &&
-		payload.ProductID !=
-			"com.iunoni.premium.yearly" {
-
-		log.Printf(
-			"Apple StoreKit: unknown product ID: %s",
-			payload.ProductID,
-		)
-
-		http.Error(
-			w,
-			"unknown product",
-			http.StatusBadRequest,
-		)
-
-		return
-	}
-
-	// =====================================================
-	// CHECK ENVIRONMENT
-	// =====================================================
-
-	switch payload.Environment {
-
-	case "Xcode":
-
-		log.Printf(
-			"Apple StoreKit: Xcode transaction",
-		)
-
-	case "Sandbox":
-
-		log.Printf(
-			"Apple StoreKit: Sandbox transaction",
-		)
-
-	case "Production":
-
-		log.Printf(
-			"Apple StoreKit: Production transaction",
-		)
-
-	default:
-
-		log.Printf(
-			"Apple StoreKit: unknown environment: %s",
-			payload.Environment,
-		)
-	}
-
-	// =====================================================
-	// CHECK EXPIRATION
-	// =====================================================
-
-	var expirationDate *time.Time
-
-	if payload.ExpiresDate > 0 {
-
-		t := time.UnixMilli(
-			payload.ExpiresDate,
-		)
-
-		expirationDate = &t
-	}
-
-	// =====================================================
-	// DETERMINE PREMIUM STATUS
-	// =====================================================
-
-	isPremium := true
-
-	if expirationDate != nil &&
-		expirationDate.Before(time.Now()) {
-
-		isPremium = false
-
-		log.Printf(
-			"Apple StoreKit: transaction is already expired",
-		)
-	}
-
-	if payload.RevocationDate != nil {
-
-		isPremium = false
-
-		log.Printf(
-			"Apple StoreKit: transaction was revoked",
-		)
-	}
-
-	// =====================================================
 	// DATABASE TRANSACTION
 	// =====================================================
 
-	tx, err := db.Pool.Begin(
-		r.Context(),
-	)
+	tx, err :=
+		storekit.BeginTransaction(
+			r.Context(),
+		)
 
 	if err != nil {
 
@@ -370,71 +322,17 @@ func AppleStoreKitTransactionHandler(
 	)
 
 	// =====================================================
-	// SAVE / UPDATE SUBSCRIPTION
+	// SAVE SUBSCRIPTION
 	// =====================================================
 
-	_, err = tx.Exec(
-		r.Context(),
-		`
-		INSERT INTO subscriptions (
-			user_id,
-			provider,
-			provider_subscription_id,
-			product_id,
-			status,
-			current_period_start,
-			current_period_end,
-			cancel_at_period_end
-		)
-		VALUES (
-			$1,
-			'apple',
-			$2,
-			$3,
-			$4,
-			$5,
-			$6,
-			false
-		)
-		ON CONFLICT (
-			provider,
-			provider_subscription_id
-		)
-		DO UPDATE SET
-			user_id =
-				EXCLUDED.user_id,
-
-			product_id =
-				EXCLUDED.product_id,
-
-			status =
-				EXCLUDED.status,
-
-			current_period_start =
-				EXCLUDED.current_period_start,
-
-			current_period_end =
-				EXCLUDED.current_period_end,
-
-			cancel_at_period_end =
-				EXCLUDED.cancel_at_period_end,
-
-			updated_at =
-				now()
-		`,
-		claims.UserID,
-		payload.OriginalTransactionID,
-		payload.ProductID,
-		appleSubscriptionStatus(
+	if err :=
+		storekit.SaveSubscription(
+			r.Context(),
+			tx,
+			claims.UserID,
+			transaction,
 			isPremium,
-		),
-		applePurchaseDate(
-			payload.PurchaseDate,
-		),
-		expirationDate,
-	)
-
-	if err != nil {
+		); err != nil {
 
 		log.Printf(
 			"Apple StoreKit: failed to save subscription: %v",
@@ -456,139 +354,46 @@ func AppleStoreKitTransactionHandler(
 	)
 
 	// =====================================================
-	// PAYMENT AMOUNT
-	// =====================================================
-	//
-	// Apple provides price in milliunits.
-	//
-	// Example:
-	//
-	// 4990 milliunits = $4.99
-	//
-	// Our payment_transactions.amount is stored in cents:
-	//
-	// 4990 / 10 = 499 cents
-	//
-	// =====================================================
-
-	amount := 0
-	currency := "USD"
-
-	if payload.Price != nil {
-
-		amount = int(
-			*payload.Price / 10,
-		)
-	}
-
-	if payload.Currency != nil &&
-		*payload.Currency != "" {
-
-		currency = *payload.Currency
-	}
-
-	log.Printf(
-		"Apple StoreKit: payment amount = %d %s cents",
-		amount,
-		currency,
-	)
-
-	// =====================================================
 	// SAVE PAYMENT TRANSACTION
 	// =====================================================
-	//
-	// Xcode StoreKit transactions use:
-	//
-	// transactionId = "0"
-	//
-	// These are local test transactions and should NOT
-	// be treated as real payment transactions.
-	//
-	// Sandbox and Production transactions have real
-	// transaction IDs and are persisted.
-	//
-	// =====================================================
 
-	if payload.TransactionID != "" &&
-		payload.TransactionID != "0" {
-
-		_, err = tx.Exec(
+	if err :=
+		storekit.SavePaymentTransaction(
 			r.Context(),
-			`
-			INSERT INTO payment_transactions (
-				user_id,
-				provider,
-				provider_transaction_id,
-				product_id,
-				amount,
-				currency,
-				status
-			)
-			VALUES (
-				$1,
-				'apple',
-				$2,
-				$3,
-				$4,
-				$5,
-				$6
-			)
-			ON CONFLICT (
-				provider,
-				provider_transaction_id
-			)
-			DO UPDATE SET
-				user_id =
-					EXCLUDED.user_id,
-
-				product_id =
-					EXCLUDED.product_id,
-
-				amount =
-					EXCLUDED.amount,
-
-				currency =
-					EXCLUDED.currency,
-
-				status =
-					EXCLUDED.status
-			`,
+			tx,
 			claims.UserID,
-			payload.TransactionID,
-			payload.ProductID,
-			amount,
-			currency,
-			appleSubscriptionStatus(
-				isPremium,
-			),
-		)
-
-		if err != nil {
-
-			log.Printf(
-				"Apple StoreKit: failed to save payment transaction: %v",
-				err,
-			)
-
-			http.Error(
-				w,
-				"failed to save payment transaction",
-				http.StatusInternalServerError,
-			)
-
-			return
-		}
+			transaction,
+			isPremium,
+		); err != nil {
 
 		log.Printf(
-			"Apple StoreKit: payment transaction saved for user %d, transaction %s",
-			claims.UserID,
-			payload.TransactionID,
+			"Apple StoreKit: failed to save payment transaction: %v",
+			err,
+		)
+
+		http.Error(
+			w,
+			"failed to save payment transaction",
+			http.StatusInternalServerError,
+		)
+
+		return
+	}
+
+	if storekit.IsXcodeTransaction(
+		decodedPayload,
+	) {
+
+		log.Printf(
+			"Apple StoreKit: Xcode transaction detected - payment transaction not persisted",
 		)
 
 	} else {
 
 		log.Printf(
-			"Apple StoreKit: Xcode transaction detected - payment transaction not persisted",
+			"Apple StoreKit: payment transaction saved for user %d, transaction %s",
+			claims.UserID,
+			decodedPayload.TransactionID,
 		)
 	}
 
@@ -596,18 +401,13 @@ func AppleStoreKitTransactionHandler(
 	// UPDATE USER PREMIUM
 	// =====================================================
 
-	_, err = tx.Exec(
-		r.Context(),
-		`
-		UPDATE users
-		SET is_premium = $1
-		WHERE id = $2
-		`,
-		isPremium,
-		claims.UserID,
-	)
-
-	if err != nil {
+	if err :=
+		storekit.UpdateUserPremium(
+			r.Context(),
+			tx,
+			claims.UserID,
+			isPremium,
+		); err != nil {
 
 		log.Printf(
 			"Apple StoreKit: failed to update premium status: %v",
@@ -633,9 +433,10 @@ func AppleStoreKitTransactionHandler(
 	// COMMIT
 	// =====================================================
 
-	if err := tx.Commit(
-		r.Context(),
-	); err != nil {
+	if err :=
+		tx.Commit(
+			r.Context(),
+		); err != nil {
 
 		log.Printf(
 			"Apple StoreKit: failed to commit transaction: %v",
@@ -672,45 +473,11 @@ func AppleStoreKitTransactionHandler(
 		map[string]interface{}{
 			"success":     true,
 			"user_id":     claims.UserID,
-			"product_id":  payload.ProductID,
+			"product_id":  decodedPayload.ProductID,
 			"is_premium":  isPremium,
-			"environment": payload.Environment,
+			"environment": decodedPayload.Environment,
 		},
 	)
-}
-
-// =====================================================
-// APPLE PURCHASE DATE
-// =====================================================
-
-func applePurchaseDate(
-	milliseconds int64,
-) *time.Time {
-
-	if milliseconds <= 0 {
-		return nil
-	}
-
-	t := time.UnixMilli(
-		milliseconds,
-	)
-
-	return &t
-}
-
-// =====================================================
-// APPLE SUBSCRIPTION STATUS
-// =====================================================
-
-func appleSubscriptionStatus(
-	isPremium bool,
-) string {
-
-	if isPremium {
-		return "active"
-	}
-
-	return "expired"
 }
 
 // =====================================================

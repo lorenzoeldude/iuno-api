@@ -11,6 +11,7 @@ import (
 	"iuno-api/handlers"
 	"iuno-api/middleware"
 	"iuno-api/stripe"
+	stripehandlers "iuno-api/handlers/stripehandlers"
 )
 
 func main() {
@@ -49,7 +50,7 @@ func main() {
 		"/api/stripe/create-checkout-session",
 		middleware.CORSMiddleware(
 			middleware.AuthMiddleware(
-				handlers.CreateCheckoutSessionHandler,
+				stripehandlers.CreateCheckoutSessionHandler,
 			),
 		),
 	)
@@ -57,7 +58,7 @@ func main() {
 	http.HandleFunc(
 		"/api/stripe/webhook",
 		middleware.CORSMiddleware(
-			handlers.StripeWebhookHandler,
+			stripehandlers.StripeWebhookHandler,
 		),
 	)
 
@@ -69,7 +70,7 @@ func main() {
 		"/api/stripe/create-portal-session",
 		middleware.CORSMiddleware(
 			middleware.AuthMiddleware(
-				handlers.CreateStripePortalSessionHandler,
+				stripehandlers.CreateStripePortalSessionHandler,
 			),
 		),
 	)
@@ -82,7 +83,7 @@ func main() {
 		"/api/billing/status",
 		middleware.CORSMiddleware(
 			middleware.AuthMiddleware(
-				handlers.GetBillingStatusHandler,
+				stripehandlers.GetBillingStatusHandler,
 			),
 		),
 	)
@@ -108,6 +109,17 @@ func main() {
 		"/api/word/",
 		middleware.CORSMiddleware(
 			handlers.WordHandler,
+		),
+	)
+
+	// =====================================================
+	// WORD OF THE DAY
+	// =====================================================
+
+	http.HandleFunc(
+		"/api/word-of-the-day",
+		middleware.CORSMiddleware(
+			handlers.WordOfTheDayHandler,
 		),
 	)
 
