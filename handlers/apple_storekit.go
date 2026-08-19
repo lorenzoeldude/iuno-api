@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 
 	"iuno-api/middleware"
 	"iuno-api/storekit"
@@ -118,18 +121,18 @@ func AppleStoreKitTransactionHandler(
 	)
 
 	// =====================================================
-	// DECODE APPLE JWS
+	// VERIFY APPLE TRANSACTION
 	// =====================================================
 
-	decodedPayload, err :=
-		utils.DecodeAppleTransaction(
+	transaction, err :=
+		storekit.VerifyTransaction(
 			req.SignedTransaction,
 		)
 
 	if err != nil {
 
 		log.Printf(
-			"Apple StoreKit: failed to decode JWS: %v",
+			"Apple StoreKit: transaction verification failed: %v",
 			err,
 		)
 
@@ -141,6 +144,9 @@ func AppleStoreKitTransactionHandler(
 
 		return
 	}
+
+	decodedPayload :=
+		transaction.Payload
 
 	// =====================================================
 	// VALIDATE PRODUCT
@@ -163,15 +169,6 @@ func AppleStoreKitTransactionHandler(
 
 		return
 	}
-
-	// =====================================================
-	// CREATE TRANSACTION
-	// =====================================================
-
-	transaction :=
-		&storekit.Transaction{
-			Payload: decodedPayload,
-		}
 
 	// =====================================================
 	// PREMIUM STATUS
@@ -320,6 +317,71 @@ func AppleStoreKitTransactionHandler(
 	defer tx.Rollback(
 		r.Context(),
 	)
+
+	// =====================================================
+	// CHECK SUBSCRIPTION OWNERSHIP
+	// =====================================================
+
+	ownerID, err :=
+		storekit.GetSubscriptionOwner(
+			r.Context(),
+			tx,
+			decodedPayload.OriginalTransactionID,
+		)
+
+	if err != nil &&
+		!errors.Is(err, pgx.ErrNoRows) {
+
+		log.Printf(
+			"Apple StoreKit: failed to check subscription ownership: %v",
+			err,
+		)
+
+		http.Error(
+			w,
+			"failed to check subscription ownership",
+			http.StatusInternalServerError,
+		)
+
+		return
+	}
+
+	if err == nil {
+
+		// Subscription already exists.
+
+		if ownerID != claims.UserID {
+
+			log.Printf(
+				"Apple StoreKit: subscription %s already belongs to user %d; user %d rejected",
+				decodedPayload.OriginalTransactionID,
+				ownerID,
+				claims.UserID,
+			)
+
+			http.Error(
+				w,
+				"subscription belongs to another user",
+				http.StatusForbidden,
+			)
+
+			return
+		}
+
+		log.Printf(
+			"Apple StoreKit: subscription ownership confirmed for user %d",
+			claims.UserID,
+		)
+
+	} else {
+
+		// No subscription exists yet.
+
+		log.Printf(
+			"Apple StoreKit: subscription %s has no existing owner",
+			decodedPayload.OriginalTransactionID,
+		)
+	}
 
 	// =====================================================
 	// SAVE SUBSCRIPTION

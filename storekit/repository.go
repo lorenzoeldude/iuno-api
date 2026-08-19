@@ -9,6 +9,32 @@ import (
 )
 
 // =====================================================
+// GET APPLE SUBSCRIPTION OWNER
+// =====================================================
+
+func GetSubscriptionOwner(
+	ctx context.Context,
+	tx pgx.Tx,
+	providerSubscriptionID string,
+) (int, error) {
+
+	var userID int
+
+	err := tx.QueryRow(
+		ctx,
+		`
+		SELECT user_id
+		FROM subscriptions
+		WHERE provider = 'apple'
+		  AND provider_subscription_id = $1
+		`,
+		providerSubscriptionID,
+	).Scan(&userID)
+
+	return userID, err
+}
+
+// =====================================================
 // SAVE / UPDATE APPLE SUBSCRIPTION
 // =====================================================
 
@@ -48,8 +74,6 @@ func SaveSubscription(
 			provider_subscription_id
 		)
 		DO UPDATE SET
-			user_id =
-				EXCLUDED.user_id,
 
 			product_id =
 				EXCLUDED.product_id,
@@ -143,8 +167,6 @@ func SavePaymentTransaction(
 			provider_transaction_id
 		)
 		DO UPDATE SET
-			user_id =
-				EXCLUDED.user_id,
 
 			product_id =
 				EXCLUDED.product_id,

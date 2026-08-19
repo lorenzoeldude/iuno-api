@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/joho/godotenv"
 	"iuno-api/db"
 	"iuno-api/email"
 	"iuno-api/handlers"
@@ -15,6 +16,10 @@ import (
 )
 
 func main() {
+
+	if err := godotenv.Load(); err != nil {
+        log.Println(".env file not found")
+    }
 
 	// =====================================================
 	// INIT DATABASE
