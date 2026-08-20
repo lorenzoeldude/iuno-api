@@ -434,6 +434,38 @@ func main() {
 				}
 
 				// =====================================================
+				// PREVIOUS LESSONS TRAINER
+				// GET /api/lessons/{id}/trainer/previous/random
+				// =====================================================
+
+				if strings.HasSuffix(
+					r.URL.Path,
+					"/trainer/previous/random",
+				) {
+
+					middleware.AnonymousTrainerMiddleware(
+						func(w http.ResponseWriter, r *http.Request) {
+
+							switch r.Method {
+
+							case http.MethodGet:
+								handlers.LessonPreviousTrainerHandler(w, r)
+
+							default:
+								http.Error(
+									w,
+									"method not allowed",
+									http.StatusMethodNotAllowed,
+								)
+							}
+
+						},
+					)(w, r)
+
+					return
+				}
+
+				// =====================================================
 				// LESSON TRAINER
 				// GET /api/lessons/{id}/trainer/random
 				// =====================================================

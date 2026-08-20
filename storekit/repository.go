@@ -35,6 +35,39 @@ func GetSubscriptionOwner(
 }
 
 // =====================================================
+// CHECK WHETHER USER HAS ACTIVE APPLE SUBSCRIPTION
+// =====================================================
+
+func HasActiveAppleSubscription(
+	ctx context.Context,
+	tx pgx.Tx,
+	userID int,
+) (bool, error) {
+
+	var exists bool
+
+	err := tx.QueryRow(
+		ctx,
+		`
+		SELECT EXISTS (
+			SELECT 1
+			FROM subscriptions
+			WHERE user_id = $1
+			  AND provider = 'apple'
+			  AND status = 'active'
+			  AND (
+				  current_period_end IS NULL
+				  OR current_period_end > now()
+			  )
+		)
+		`,
+		userID,
+	).Scan(&exists)
+
+	return exists, err
+}
+
+// =====================================================
 // SAVE / UPDATE APPLE SUBSCRIPTION
 // =====================================================
 
