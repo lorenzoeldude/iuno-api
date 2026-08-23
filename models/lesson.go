@@ -25,6 +25,8 @@ type GrammarSlide struct {
 	Type           string   `json:"type"`
 	Title          string   `json:"title,omitempty"`
 	Text           []string `json:"text,omitempty"`
+	Sentence       string   `json:"sentence,omitempty"`
+	Question       string   `json:"question,omitempty"`
 	SentenceBefore string   `json:"sentenceBefore,omitempty"`
 	Correct        string   `json:"correct,omitempty"`
 	Options        []string `json:"options,omitempty"`
