@@ -11,7 +11,6 @@ import (
 	"iuno-api/models"
 )
 
-
 func CreateLessonHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodPost {
@@ -61,10 +60,9 @@ func CreateLessonHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+
 	json.NewEncoder(w).Encode(lesson)
 }
-
-
 
 func GetLessonHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -72,7 +70,6 @@ func GetLessonHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
 
 	idString := strings.TrimPrefix(
 		r.URL.Path,
@@ -83,7 +80,6 @@ func GetLessonHandler(w http.ResponseWriter, r *http.Request) {
 		idString,
 		"/api/lessons/",
 	)
-
 
 	id, err := strconv.Atoi(idString)
 
@@ -96,9 +92,7 @@ func GetLessonHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
 	var lesson models.Lesson
-
 
 	err = db.Pool.QueryRow(
 		context.Background(),
@@ -131,7 +125,6 @@ func GetLessonHandler(w http.ResponseWriter, r *http.Request) {
 		&lesson.UpdatedAt,
 	)
 
-
 	if err != nil {
 		http.Error(
 			w,
@@ -140,7 +133,6 @@ func GetLessonHandler(w http.ResponseWriter, r *http.Request) {
 		)
 		return
 	}
-
 
 	w.Header().Set(
 		"Content-Type",
@@ -157,12 +149,10 @@ func UpdateLessonHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
 	idString := strings.TrimPrefix(
 		r.URL.Path,
 		"/api/admin/lessons/",
 	)
-
 
 	id, err := strconv.Atoi(idString)
 
@@ -175,7 +165,6 @@ func UpdateLessonHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
 	var lesson models.Lesson
 
 	if err := json.NewDecoder(r.Body).Decode(&lesson); err != nil {
@@ -186,7 +175,6 @@ func UpdateLessonHandler(w http.ResponseWriter, r *http.Request) {
 		)
 		return
 	}
-
 
 	err = db.Pool.QueryRow(
 		context.Background(),
@@ -221,7 +209,6 @@ func UpdateLessonHandler(w http.ResponseWriter, r *http.Request) {
 		&lesson.UpdatedAt,
 	)
 
-
 	if err != nil {
 		http.Error(
 			w,
@@ -230,7 +217,6 @@ func UpdateLessonHandler(w http.ResponseWriter, r *http.Request) {
 		)
 		return
 	}
-
 
 	w.Header().Set(
 		"Content-Type",
@@ -294,6 +280,15 @@ func GetLessonsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		lessons = append(lessons, lesson)
+	}
+
+	if err := rows.Err(); err != nil {
+		http.Error(
+			w,
+			err.Error(),
+			http.StatusInternalServerError,
+		)
+		return
 	}
 
 	w.Header().Set(
