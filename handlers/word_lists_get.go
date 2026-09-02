@@ -102,3 +102,88 @@ func GetWordListsHandler(
 
 	json.NewEncoder(w).Encode(lists)
 }
+
+// =====================================================
+// PUBLIC WORD LISTS
+// =====================================================
+
+func GetPublicWordListsHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	// =====================================================
+	// METHOD CHECK
+	// =====================================================
+
+	if r.Method != http.MethodGet {
+
+		http.Error(
+			w,
+			"method not allowed",
+			http.StatusMethodNotAllowed,
+		)
+
+		return
+	}
+
+	// =====================================================
+	// QUERY PUBLIC WORD LISTS
+	// =====================================================
+
+	rows, err := db.Pool.Query(context.Background(), `
+		SELECT 
+			wl.id,
+			wl.name,
+			COUNT(wll.lemma_id) AS lemma_count
+		FROM word_lists wl
+		LEFT JOIN word_list_lemmas wll
+			ON wl.id = wll.list_id
+		WHERE wl.user_id IS NULL
+		GROUP BY wl.id
+		ORDER BY wl.created_at DESC
+	`)
+
+	if err != nil {
+
+		http.Error(
+			w,
+			"failed to fetch public word lists",
+			http.StatusInternalServerError,
+		)
+
+		return
+	}
+
+	defer rows.Close()
+
+	lists := []WordListWithCount{}
+
+	for rows.Next() {
+
+		var wl WordListWithCount
+
+		err := rows.Scan(
+			&wl.ID,
+			&wl.Name,
+			&wl.LemmaCount,
+		)
+
+		if err != nil {
+			continue
+		}
+
+		lists = append(lists, wl)
+	}
+
+	// =====================================================
+	// RESPONSE
+	// =====================================================
+
+	w.Header().Set(
+		"Content-Type",
+		"application/json",
+	)
+
+	json.NewEncoder(w).Encode(lists)
+}

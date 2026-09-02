@@ -617,6 +617,13 @@ func main() {
 	)
 
 	http.HandleFunc(
+		"/api/word-lists/public",
+		middleware.CORSMiddleware(
+			handlers.GetPublicWordListsHandler,
+		),
+	)
+
+	http.HandleFunc(
 		"/api/word-lists/create",
 		middleware.CORSMiddleware(
 			middleware.AuthMiddleware(
