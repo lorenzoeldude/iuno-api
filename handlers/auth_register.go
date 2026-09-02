@@ -1,3 +1,8 @@
+//
+//  AuthHandler.go
+//  IUNO API
+//
+
 package handlers
 
 import (
@@ -7,6 +12,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -17,6 +23,10 @@ import (
 )
 
 var usernameRegex = regexp.MustCompile(`^[a-zA-Z0-9_]{3,20}$`)
+
+// =====================================================
+// MARK: - REGISTER
+// =====================================================
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -88,7 +98,10 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	// USERNAME VALIDATION
 	// =====================================================
 
-	if strings.ContainsAny(body.Username, " \t\n\r") {
+	if strings.ContainsAny(
+		body.Username,
+		" \t\n\r",
+	) {
 
 		http.Error(
 			w,
@@ -99,7 +112,9 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !usernameRegex.MatchString(body.Username) {
+	if !usernameRegex.MatchString(
+		body.Username,
+	) {
 
 		http.Error(
 			w,
@@ -130,7 +145,10 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		log.Println("EMAIL CHECK ERROR:", err)
+		log.Println(
+			"EMAIL CHECK ERROR:",
+			err,
+		)
 
 		http.Error(
 			w,
@@ -148,11 +166,16 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 			"application/json",
 		)
 
-		w.WriteHeader(http.StatusConflict)
+		w.WriteHeader(
+			http.StatusConflict,
+		)
 
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "email already exists",
-		})
+		json.NewEncoder(w).Encode(
+			map[string]string{
+				"error":
+					"email already exists",
+			},
+		)
 
 		return
 	}
@@ -177,7 +200,10 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		log.Println("USERNAME CHECK ERROR:", err)
+		log.Println(
+			"USERNAME CHECK ERROR:",
+			err,
+		)
 
 		http.Error(
 			w,
@@ -195,11 +221,16 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 			"application/json",
 		)
 
-		w.WriteHeader(http.StatusConflict)
+		w.WriteHeader(
+			http.StatusConflict,
+		)
 
-		json.NewEncoder(w).Encode(map[string]string{
-			"error": "username already exists",
-		})
+		json.NewEncoder(w).Encode(
+			map[string]string{
+				"error":
+					"username already exists",
+			},
+		)
 
 		return
 	}
@@ -208,14 +239,18 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	// HASH PASSWORD
 	// =====================================================
 
-	passwordHash, err := bcrypt.GenerateFromPassword(
-		[]byte(body.Password),
-		bcrypt.DefaultCost,
-	)
+	passwordHash, err :=
+		bcrypt.GenerateFromPassword(
+			[]byte(body.Password),
+			bcrypt.DefaultCost,
+		)
 
 	if err != nil {
 
-		log.Println("BCRYPT ERROR:", err)
+		log.Println(
+			"BCRYPT ERROR:",
+			err,
+		)
 
 		http.Error(
 			w,
@@ -230,11 +265,15 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	// CREATE EMAIL VERIFICATION TOKEN
 	// =====================================================
 
-	verificationToken, err := utils.GenerateVerificationToken()
+	verificationToken, err :=
+		utils.GenerateVerificationToken()
 
 	if err != nil {
 
-		log.Println("TOKEN ERROR:", err)
+		log.Println(
+			"TOKEN ERROR:",
+			err,
+		)
 
 		http.Error(
 			w,
@@ -245,9 +284,10 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	verificationHash := utils.HashVerificationToken(
-		verificationToken,
-	)
+	verificationHash :=
+		utils.HashVerificationToken(
+			verificationToken,
+		)
 
 	// =====================================================
 	// INSERT USER
@@ -264,7 +304,8 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 			password_hash,
 			email_verified,
 			email_verification_hash,
-			email_verification_expires_at
+			email_verification_expires_at,
+			email_verification_last_sent_at
 		)
 		VALUES (
 			$1,
@@ -272,7 +313,8 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 			$3,
 			FALSE,
 			$4,
-			NOW() + INTERVAL '24 hours'
+			NOW() + INTERVAL '24 hours',
+			NOW()
 		)
 		RETURNING id
 		`,
@@ -284,7 +326,10 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		log.Println("REGISTER ERROR:", err)
+		log.Println(
+			"REGISTER ERROR:",
+			err,
+		)
 
 		// This can still happen if two requests
 		// try to register the same email/username
@@ -318,7 +363,10 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		log.Println("WORDLIST CREATE ERROR:", err)
+		log.Println(
+			"WORDLIST CREATE ERROR:",
+			err,
+		)
 
 		http.Error(
 			w,
@@ -340,7 +388,10 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 
-		log.Println("EMAIL ERROR:", err)
+		log.Println(
+			"EMAIL ERROR:",
+			err,
+		)
 
 		// Don't fail the registration if the email
 		// couldn't be sent.
@@ -357,9 +408,283 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		"application/json",
 	)
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":   "ok",
-		"user_id":  userID,
-		"username": body.Username,
-	})
+	json.NewEncoder(w).Encode(
+		map[string]interface{}{
+			"status":   "ok",
+			"user_id":  userID,
+			"username": body.Username,
+		},
+	)
+}
+
+
+// =====================================================
+// MARK: - RESEND VERIFICATION EMAIL
+// =====================================================
+
+func ResendVerificationHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	// =====================================================
+	// METHOD CHECK
+	// =====================================================
+
+	if r.Method != http.MethodPost {
+		http.Error(
+			w,
+			"method not allowed",
+			http.StatusMethodNotAllowed,
+		)
+
+		return
+	}
+
+	// =====================================================
+	// PARSE REQUEST
+	// =====================================================
+
+	var body struct {
+		Email string `json:"email"`
+	}
+
+	err := json.NewDecoder(
+		r.Body,
+	).Decode(&body)
+
+	if err != nil {
+
+		log.Println(
+			"RESEND VERIFICATION JSON ERROR:",
+			err,
+		)
+
+		http.Error(
+			w,
+			"invalid json",
+			http.StatusBadRequest,
+		)
+
+		return
+	}
+
+	// =====================================================
+	// NORMALIZE EMAIL
+	// =====================================================
+
+	body.Email = strings.TrimSpace(
+		strings.ToLower(body.Email),
+	)
+
+	if body.Email == "" {
+
+		http.Error(
+			w,
+			"missing email",
+			http.StatusBadRequest,
+		)
+
+		return
+	}
+
+	// =====================================================
+	// FIND USER
+	// =====================================================
+
+	var (
+		userID     int
+		verified   bool
+		lastSentAt *time.Time
+	)
+
+	err = db.Pool.QueryRow(
+		context.Background(),
+		`
+		SELECT
+			id,
+			email_verified,
+			email_verification_last_sent_at
+		FROM users
+		WHERE email = $1
+		`,
+		body.Email,
+	).Scan(
+		&userID,
+		&verified,
+		&lastSentAt,
+	)
+
+	// =====================================================
+	// GENERIC RESPONSE FOR UNKNOWN EMAIL
+	// =====================================================
+
+	if err != nil {
+
+		// Don't reveal whether an account exists.
+		w.Header().Set(
+			"Content-Type",
+			"application/json",
+		)
+
+		json.NewEncoder(w).Encode(
+			map[string]string{
+				"status": "ok",
+			},
+		)
+
+		return
+	}
+
+	// =====================================================
+	// ALREADY VERIFIED
+	// =====================================================
+
+	if verified {
+
+		w.Header().Set(
+			"Content-Type",
+			"application/json",
+		)
+
+		json.NewEncoder(w).Encode(
+			map[string]string{
+				"status": "ok",
+			},
+		)
+
+		return
+	}
+
+	// =====================================================
+	// RATE LIMIT
+	// =====================================================
+
+	if lastSentAt != nil {
+
+		if time.Since(*lastSentAt) <
+			time.Minute {
+
+			w.Header().Set(
+				"Content-Type",
+				"application/json",
+			)
+
+			w.WriteHeader(
+				http.StatusTooManyRequests,
+			)
+
+			json.NewEncoder(w).Encode(
+				map[string]string{
+					"error":
+						"please wait before requesting another verification email",
+				},
+			)
+
+			return
+		}
+	}
+
+	// =====================================================
+	// GENERATE NEW VERIFICATION TOKEN
+	// =====================================================
+
+	verificationToken, err :=
+		utils.GenerateVerificationToken()
+
+	if err != nil {
+
+		log.Println(
+			"RESEND VERIFICATION TOKEN ERROR:",
+			err,
+		)
+
+		http.Error(
+			w,
+			"failed to resend verification email",
+			http.StatusInternalServerError,
+		)
+
+		return
+	}
+
+	verificationHash :=
+		utils.HashVerificationToken(
+			verificationToken,
+		)
+
+	// =====================================================
+	// UPDATE VERIFICATION TOKEN
+	// =====================================================
+
+	_, err = db.Pool.Exec(
+		context.Background(),
+		`
+		UPDATE users
+		SET
+			email_verification_hash = $1,
+			email_verification_expires_at =
+				NOW() + INTERVAL '24 hours',
+			email_verification_last_sent_at = NOW()
+		WHERE id = $2
+		`,
+		verificationHash,
+		userID,
+	)
+
+	if err != nil {
+
+		log.Println(
+			"RESEND VERIFICATION UPDATE ERROR:",
+			err,
+		)
+
+		http.Error(
+			w,
+			"failed to resend verification email",
+			http.StatusInternalServerError,
+		)
+
+		return
+	}
+
+	// =====================================================
+	// SEND EMAIL
+	// =====================================================
+
+	err = email.SendVerificationEmail(
+		body.Email,
+		verificationToken,
+	)
+
+	if err != nil {
+
+		log.Println(
+			"RESEND VERIFICATION EMAIL ERROR:",
+			err,
+		)
+
+		http.Error(
+			w,
+			"failed to send verification email",
+			http.StatusInternalServerError,
+		)
+
+		return
+	}
+
+	// =====================================================
+	// RESPONSE
+	// =====================================================
+
+	w.Header().Set(
+		"Content-Type",
+		"application/json",
+	)
+
+	json.NewEncoder(w).Encode(
+		map[string]string{
+			"status": "ok",
+		},
+	)
 }

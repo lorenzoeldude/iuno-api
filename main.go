@@ -585,6 +585,11 @@ func main() {
 		),
 	)
 
+	http.HandleFunc(
+		"/api/auth/resend-verification",
+		handlers.ResendVerificationHandler,
+	)
+
 	// =====================================================
 	// USER SETTINGS
 	// =====================================================
