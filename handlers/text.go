@@ -137,7 +137,7 @@ func TextHandler(w http.ResponseWriter, r *http.Request) {
 		Sections    []TextSection `json:"sections"`
 	}{
 		ID:          text.ID,
-		Title:        text.Title,
+		Title:       text.Title,
 		Author:      text.Author,
 		Description: text.Description,
 		Difficulty:  text.Difficulty,
@@ -291,17 +291,17 @@ type ReadingProgress struct {
 }
 
 type LatestReadingProgress struct {
-    TextID          int64     `json:"text_id"`
-    Title           string    `json:"title"`
-    Author          string    `json:"author"`
-    Difficulty      string    `json:"difficulty"`
-    SectionID       int64     `json:"section_id"`
-    SectionTitle    string    `json:"section_title"`
-    SectionPosition int       `json:"section_position"`
-    CharacterOffset int       `json:"character_offset"`
-    Completed       bool      `json:"completed"`
-    ProgressPercent int       `json:"progress_percent"`
-    UpdatedAt       time.Time `json:"updated_at"`
+	TextID          int64     `json:"text_id"`
+	Title           string    `json:"title"`
+	Author          string    `json:"author"`
+	Difficulty      string    `json:"difficulty"`
+	SectionID       int64     `json:"section_id"`
+	SectionTitle    string    `json:"section_title"`
+	SectionPosition int       `json:"section_position"`
+	CharacterOffset int       `json:"character_offset"`
+	Completed       bool      `json:"completed"`
+	ProgressPercent int       `json:"progress_percent"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 // =========================================================
@@ -317,7 +317,11 @@ func ReadingProgressHandler(w http.ResponseWriter, r *http.Request) {
 	).(*utils.Claims)
 
 	if !ok || claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		http.Error(
+			w,
+			"unauthorized",
+			http.StatusUnauthorized,
+		)
 		return
 	}
 
@@ -332,7 +336,11 @@ func ReadingProgressHandler(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if len(parts) != 2 || parts[1] != "progress" {
-		http.Error(w, "invalid path", http.StatusBadRequest)
+		http.Error(
+			w,
+			"invalid path",
+			http.StatusBadRequest,
+		)
 		return
 	}
 
@@ -343,7 +351,11 @@ func ReadingProgressHandler(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err != nil {
-		http.Error(w, "invalid text id", http.StatusBadRequest)
+		http.Error(
+			w,
+			"invalid text id",
+			http.StatusBadRequest,
+		)
 		return
 	}
 
@@ -382,10 +394,6 @@ func ReadingProgressHandler(w http.ResponseWriter, r *http.Request) {
 		http.StatusMethodNotAllowed,
 	)
 }
-
-// =========================================================
-// GET ONE TEXT'S PROGRESS
-// =========================================================
 
 // =========================================================
 // GET ONE TEXT'S PROGRESS
@@ -476,6 +484,7 @@ func getReadingProgress(
 
 	json.NewEncoder(w).Encode(progress)
 }
+
 // =========================================================
 // SAVE READING PROGRESS
 // =========================================================
@@ -708,95 +717,51 @@ func LatestReadingProgressHandler(
 		return
 	}
 
-	// Calculate progress across the entire book.
-	var totalCharacters int64
-
-	err = db.Pool.QueryRow(
-		r.Context(),
-		`
-		SELECT
-			COALESCE(
-				SUM(char_length(content)),
-				0
-			)
-		FROM text_sections
-		WHERE text_id = $1
-		`,
-		progress.TextID,
-	).Scan(&totalCharacters)
-
-	if err != nil {
-		http.Error(
-			w,
-			err.Error(),
-			http.StatusInternalServerError,
-		)
-		return
-	}
-
-	var previousCharacters int64
-
-	err = db.Pool.QueryRow(
-		r.Context(),
-		`
-		SELECT
-			COALESCE(
-				SUM(char_length(content)),
-				0
-			)
-		FROM text_sections
-		WHERE
-			text_id = $1
-			AND position < $2
-		`,
-		progress.TextID,
-		progress.SectionPosition,
-	).Scan(&previousCharacters)
-
-	if err != nil {
-		http.Error(
-			w,
-			err.Error(),
-			http.StatusInternalServerError,
-		)
-		return
-	}
+	// =====================================================
+	// CALCULATE PROGRESS WITHIN CURRENT SECTION
+	// =====================================================
 
 	if progress.Completed {
 
 		progress.ProgressPercent = 100
 
-	} else if totalCharacters > 0 {
+	} else {
 
-		currentOffset := int64(progress.CharacterOffset)
+		currentOffset := int64(
+			progress.CharacterOffset,
+		)
 
 		sectionLength := int64(
 			len([]rune(sectionContent)),
 		)
 
-		if currentOffset > sectionLength {
-			currentOffset = sectionLength
+		if sectionLength > 0 {
+
+			if currentOffset > sectionLength {
+				currentOffset = sectionLength
+			}
+
+			percent :=
+				int(
+					(float64(currentOffset) /
+						float64(sectionLength)) *
+						100,
+				)
+
+			if percent < 0 {
+				percent = 0
+			}
+
+			if percent > 100 {
+				percent = 100
+			}
+
+			progress.ProgressPercent = percent
+
+		} else {
+
+			progress.ProgressPercent = 0
 		}
-
-		readCharacters :=
-			previousCharacters +
-				currentOffset
-
-		percent :=
-			int(
-				(readCharacters * 100) /
-					totalCharacters,
-			)
-
-		if percent < 0 {
-			percent = 0
-		}
-
-		if percent > 100 {
-			percent = 100
-		}
-
-		progress.ProgressPercent = percent
 	}
 
 	w.Header().Set(
