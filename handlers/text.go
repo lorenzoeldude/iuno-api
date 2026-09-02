@@ -291,16 +291,17 @@ type ReadingProgress struct {
 }
 
 type LatestReadingProgress struct {
-	TextID          int64     `json:"text_id"`
-	Title           string    `json:"title"`
-	Author          string    `json:"author"`
-	Difficulty      string    `json:"difficulty"`
-	SectionID       int64     `json:"section_id"`
-	SectionPosition int       `json:"section_position"`
-	CharacterOffset int       `json:"character_offset"`
-	Completed       bool      `json:"completed"`
-	ProgressPercent int       `json:"progress_percent"`
-	UpdatedAt       time.Time `json:"updated_at"`
+    TextID          int64     `json:"text_id"`
+    Title           string    `json:"title"`
+    Author          string    `json:"author"`
+    Difficulty      string    `json:"difficulty"`
+    SectionID       int64     `json:"section_id"`
+    SectionTitle    string    `json:"section_title"`
+    SectionPosition int       `json:"section_position"`
+    CharacterOffset int       `json:"character_offset"`
+    Completed       bool      `json:"completed"`
+    ProgressPercent int       `json:"progress_percent"`
+    UpdatedAt       time.Time `json:"updated_at"`
 }
 
 // =========================================================
@@ -657,6 +658,7 @@ func LatestReadingProgressHandler(
 			t.author,
 			COALESCE(t.difficulty, ''),
 			rp.section_id,
+			ts.title,
 			ts.position,
 			rp.character_offset,
 			rp.completed,
@@ -678,6 +680,7 @@ func LatestReadingProgressHandler(
 		&progress.Author,
 		&progress.Difficulty,
 		&progress.SectionID,
+		&progress.SectionTitle,
 		&progress.SectionPosition,
 		&progress.CharacterOffset,
 		&progress.Completed,
