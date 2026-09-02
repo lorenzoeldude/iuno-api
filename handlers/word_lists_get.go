@@ -140,6 +140,7 @@ func GetPublicWordListsHandler(
 		LEFT JOIN word_list_lemmas wll
 			ON wl.id = wll.list_id
 		WHERE wl.user_id IS NULL
+		AND wl.type = 'vocabulary'
 		GROUP BY wl.id
 		ORDER BY wl.created_at DESC
 	`)
