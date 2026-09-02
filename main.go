@@ -139,6 +139,26 @@ func main() {
 		),
 	)
 
+	// Reading progress — latest
+	http.HandleFunc(
+		"/api/texts/progress/latest",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				handlers.LatestReadingProgressHandler,
+			),
+		),
+	)
+
+	// Reading progress — individual text
+	http.HandleFunc(
+		"/api/texts/",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				handlers.ReadingProgressHandler,
+			),
+		),
+	)
+
 	http.HandleFunc(
 		"/api/text/",
 		middleware.CORSMiddleware(

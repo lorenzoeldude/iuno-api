@@ -6,8 +6,13 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/jackc/pgx/v5"
 
 	"iuno-api/db"
+	"iuno-api/middleware"
+	"iuno-api/utils"
 )
 
 type Text struct {
@@ -25,6 +30,10 @@ type TextSection struct {
 	Title      string `json:"title"`
 	WordListID *int   `json:"word_list_id"`
 }
+
+// =========================================================
+// TEXT
+// =========================================================
 
 func TextHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -128,7 +137,7 @@ func TextHandler(w http.ResponseWriter, r *http.Request) {
 		Sections    []TextSection `json:"sections"`
 	}{
 		ID:          text.ID,
-		Title:       text.Title,
+		Title:        text.Title,
 		Author:      text.Author,
 		Description: text.Description,
 		Difficulty:  text.Difficulty,
@@ -136,8 +145,13 @@ func TextHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+
 	json.NewEncoder(w).Encode(response)
 }
+
+// =========================================================
+// TEXT SECTION
+// =========================================================
 
 func TextSectionHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -198,8 +212,13 @@ func TextSectionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+
 	json.NewEncoder(w).Encode(response)
 }
+
+// =========================================================
+// ALL TEXTS
+// =========================================================
 
 func TextsHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -257,4 +276,502 @@ func TextsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	json.NewEncoder(w).Encode(texts)
+}
+
+// =========================================================
+// READING PROGRESS MODELS
+// =========================================================
+
+type ReadingProgress struct {
+	TextID          int64     `json:"text_id"`
+	SectionID       int64     `json:"section_id"`
+	CharacterOffset int       `json:"character_offset"`
+	Completed       bool      `json:"completed"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+type LatestReadingProgress struct {
+	TextID          int64     `json:"text_id"`
+	Title           string    `json:"title"`
+	Author          string    `json:"author"`
+	Difficulty      string    `json:"difficulty"`
+	SectionID       int64     `json:"section_id"`
+	SectionPosition int       `json:"section_position"`
+	CharacterOffset int       `json:"character_offset"`
+	Completed       bool      `json:"completed"`
+	ProgressPercent int       `json:"progress_percent"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+// =========================================================
+// GET READING PROGRESS FOR ONE TEXT
+//
+// GET /api/texts/{textID}/progress
+// =========================================================
+
+func ReadingProgressHandler(w http.ResponseWriter, r *http.Request) {
+
+	claims, ok := r.Context().Value(
+		middleware.UserContextKey,
+	).(*utils.Claims)
+
+	if !ok || claims == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	path := strings.TrimPrefix(
+		r.URL.Path,
+		"/api/texts/",
+	)
+
+	parts := strings.Split(
+		strings.Trim(path, "/"),
+		"/",
+	)
+
+	if len(parts) != 2 || parts[1] != "progress" {
+		http.Error(w, "invalid path", http.StatusBadRequest)
+		return
+	}
+
+	textID, err := strconv.ParseInt(
+		parts[0],
+		10,
+		64,
+	)
+
+	if err != nil {
+		http.Error(w, "invalid text id", http.StatusBadRequest)
+		return
+	}
+
+	if r.Method == http.MethodGet {
+
+		getReadingProgress(
+			w,
+			r,
+			claims.UserID,
+			textID,
+		)
+
+		return
+	}
+
+	if r.Method == http.MethodPut {
+
+		saveReadingProgress(
+			w,
+			r,
+			claims.UserID,
+			textID,
+		)
+
+		return
+	}
+
+	w.Header().Set(
+		"Allow",
+		"GET, PUT",
+	)
+
+	http.Error(
+		w,
+		"method not allowed",
+		http.StatusMethodNotAllowed,
+	)
+}
+
+// =========================================================
+// GET ONE TEXT'S PROGRESS
+// =========================================================
+
+func getReadingProgress(
+	w http.ResponseWriter,
+	r *http.Request,
+	userID int,
+	textID int64,
+) {
+
+	var progress ReadingProgress
+
+	err := db.Pool.QueryRow(
+		r.Context(),
+		`
+		SELECT
+			text_id,
+			section_id,
+			character_offset,
+			completed,
+			updated_at
+		FROM reading_progress
+		WHERE
+			user_id = $1
+			AND text_id = $2
+		`,
+		userID,
+		textID,
+	).Scan(
+		&progress.TextID,
+		&progress.SectionID,
+		&progress.CharacterOffset,
+		&progress.Completed,
+		&progress.UpdatedAt,
+	)
+
+	if err != nil {
+
+		if err == pgx.ErrNoRows {
+			http.Error(
+				w,
+				"reading progress not found",
+				http.StatusNotFound,
+			)
+			return
+		}
+
+		http.Error(
+			w,
+			err.Error(),
+			http.StatusInternalServerError,
+		)
+
+		return
+	}
+
+	w.Header().Set(
+		"Content-Type",
+		"application/json",
+	)
+
+	json.NewEncoder(w).Encode(progress)
+}
+
+// =========================================================
+// SAVE READING PROGRESS
+// =========================================================
+
+func saveReadingProgress(
+	w http.ResponseWriter,
+	r *http.Request,
+	userID int,
+	textID int64,
+) {
+
+	var request struct {
+		SectionID       int64 `json:"section_id"`
+		CharacterOffset int   `json:"character_offset"`
+		Completed       bool  `json:"completed"`
+	}
+
+	err := json.NewDecoder(
+		r.Body,
+	).Decode(&request)
+
+	if err != nil {
+		http.Error(
+			w,
+			"invalid request body",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	if request.SectionID <= 0 {
+		http.Error(
+			w,
+			"invalid section id",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	if request.CharacterOffset < 0 {
+		http.Error(
+			w,
+			"invalid character offset",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	// Make sure the section actually belongs
+	// to the requested text.
+	var exists bool
+
+	err = db.Pool.QueryRow(
+		r.Context(),
+		`
+		SELECT EXISTS (
+			SELECT 1
+			FROM text_sections
+			WHERE
+				id = $1
+				AND text_id = $2
+		)
+		`,
+		request.SectionID,
+		textID,
+	).Scan(&exists)
+
+	if err != nil {
+		http.Error(
+			w,
+			err.Error(),
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	if !exists {
+		http.Error(
+			w,
+			"section does not belong to text",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	_, err = db.Pool.Exec(
+		r.Context(),
+		`
+		INSERT INTO reading_progress (
+			user_id,
+			text_id,
+			section_id,
+			character_offset,
+			completed,
+			updated_at
+		)
+		VALUES (
+			$1,
+			$2,
+			$3,
+			$4,
+			$5,
+			NOW()
+		)
+		ON CONFLICT (user_id, section_id)
+		DO UPDATE SET
+			text_id = EXCLUDED.text_id,
+			character_offset = EXCLUDED.character_offset,
+			completed = EXCLUDED.completed,
+			updated_at = NOW()
+		`,
+		userID,
+		textID,
+		request.SectionID,
+		request.CharacterOffset,
+		request.Completed,
+	)
+
+	if err != nil {
+		http.Error(
+			w,
+			err.Error(),
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// =========================================================
+// LATEST READING PROGRESS
+//
+// GET /api/texts/progress/latest
+// =========================================================
+
+func LatestReadingProgressHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	claims, ok := r.Context().Value(
+		middleware.UserContextKey,
+	).(*utils.Claims)
+
+	if !ok || claims == nil {
+		http.Error(
+			w,
+			"unauthorized",
+			http.StatusUnauthorized,
+		)
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		w.Header().Set(
+			"Allow",
+			"GET",
+		)
+
+		http.Error(
+			w,
+			"method not allowed",
+			http.StatusMethodNotAllowed,
+		)
+
+		return
+	}
+
+	var progress LatestReadingProgress
+
+	var sectionContent string
+
+	err := db.Pool.QueryRow(
+		r.Context(),
+		`
+		SELECT
+			rp.text_id,
+			t.title,
+			t.author,
+			COALESCE(t.difficulty, ''),
+			rp.section_id,
+			ts.position,
+			rp.character_offset,
+			rp.completed,
+			rp.updated_at,
+			ts.content
+		FROM reading_progress rp
+		JOIN texts t
+			ON t.id = rp.text_id
+		JOIN text_sections ts
+			ON ts.id = rp.section_id
+		WHERE rp.user_id = $1
+		ORDER BY rp.updated_at DESC
+		LIMIT 1
+		`,
+		claims.UserID,
+	).Scan(
+		&progress.TextID,
+		&progress.Title,
+		&progress.Author,
+		&progress.Difficulty,
+		&progress.SectionID,
+		&progress.SectionPosition,
+		&progress.CharacterOffset,
+		&progress.Completed,
+		&progress.UpdatedAt,
+		&sectionContent,
+	)
+
+	if err != nil {
+
+		if err == pgx.ErrNoRows {
+			http.Error(
+				w,
+				"reading progress not found",
+				http.StatusNotFound,
+			)
+			return
+		}
+
+		http.Error(
+			w,
+			err.Error(),
+			http.StatusInternalServerError,
+		)
+
+		return
+	}
+
+	// Calculate progress across the entire book.
+	var totalCharacters int64
+
+	err = db.Pool.QueryRow(
+		r.Context(),
+		`
+		SELECT
+			COALESCE(
+				SUM(char_length(content)),
+				0
+			)
+		FROM text_sections
+		WHERE text_id = $1
+		`,
+		progress.TextID,
+	).Scan(&totalCharacters)
+
+	if err != nil {
+		http.Error(
+			w,
+			err.Error(),
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	var previousCharacters int64
+
+	err = db.Pool.QueryRow(
+		r.Context(),
+		`
+		SELECT
+			COALESCE(
+				SUM(char_length(content)),
+				0
+			)
+		FROM text_sections
+		WHERE
+			text_id = $1
+			AND position < $2
+		`,
+		progress.TextID,
+		progress.SectionPosition,
+	).Scan(&previousCharacters)
+
+	if err != nil {
+		http.Error(
+			w,
+			err.Error(),
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	if progress.Completed {
+
+		progress.ProgressPercent = 100
+
+	} else if totalCharacters > 0 {
+
+		currentOffset := int64(progress.CharacterOffset)
+
+		sectionLength := int64(
+			len([]rune(sectionContent)),
+		)
+
+		if currentOffset > sectionLength {
+			currentOffset = sectionLength
+		}
+
+		readCharacters :=
+			previousCharacters +
+				currentOffset
+
+		percent :=
+			int(
+				(readCharacters * 100) /
+					totalCharacters,
+			)
+
+		if percent < 0 {
+			percent = 0
+		}
+
+		if percent > 100 {
+			percent = 100
+		}
+
+		progress.ProgressPercent = percent
+	}
+
+	w.Header().Set(
+		"Content-Type",
+		"application/json",
+	)
+
+	json.NewEncoder(w).Encode(progress)
 }
