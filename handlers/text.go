@@ -386,6 +386,10 @@ func ReadingProgressHandler(w http.ResponseWriter, r *http.Request) {
 // GET ONE TEXT'S PROGRESS
 // =========================================================
 
+// =========================================================
+// GET ONE TEXT'S PROGRESS
+// =========================================================
+
 func getReadingProgress(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -393,9 +397,7 @@ func getReadingProgress(
 	textID int64,
 ) {
 
-	var progress ReadingProgress
-
-	err := db.Pool.QueryRow(
+	rows, err := db.Pool.Query(
 		r.Context(),
 		`
 		SELECT
@@ -408,34 +410,61 @@ func getReadingProgress(
 		WHERE
 			user_id = $1
 			AND text_id = $2
+		ORDER BY updated_at DESC
 		`,
 		userID,
 		textID,
-	).Scan(
-		&progress.TextID,
-		&progress.SectionID,
-		&progress.CharacterOffset,
-		&progress.Completed,
-		&progress.UpdatedAt,
 	)
 
 	if err != nil {
-
-		if err == pgx.ErrNoRows {
-			http.Error(
-				w,
-				"reading progress not found",
-				http.StatusNotFound,
-			)
-			return
-		}
-
 		http.Error(
 			w,
 			err.Error(),
 			http.StatusInternalServerError,
 		)
+		return
+	}
 
+	defer rows.Close()
+
+	progress := make(
+		[]ReadingProgress,
+		0,
+	)
+
+	for rows.Next() {
+
+		var item ReadingProgress
+
+		err := rows.Scan(
+			&item.TextID,
+			&item.SectionID,
+			&item.CharacterOffset,
+			&item.Completed,
+			&item.UpdatedAt,
+		)
+
+		if err != nil {
+			http.Error(
+				w,
+				err.Error(),
+				http.StatusInternalServerError,
+			)
+			return
+		}
+
+		progress = append(
+			progress,
+			item,
+		)
+	}
+
+	if err := rows.Err(); err != nil {
+		http.Error(
+			w,
+			err.Error(),
+			http.StatusInternalServerError,
+		)
 		return
 	}
 
@@ -446,7 +475,6 @@ func getReadingProgress(
 
 	json.NewEncoder(w).Encode(progress)
 }
-
 // =========================================================
 // SAVE READING PROGRESS
 // =========================================================
