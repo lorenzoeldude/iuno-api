@@ -6,20 +6,21 @@ import (
 	"os"
 	"strings"
 
-	"github.com/joho/godotenv"
 	"iuno-api/db"
 	"iuno-api/email"
 	"iuno-api/handlers"
+	stripehandlers "iuno-api/handlers/stripehandlers"
 	"iuno-api/middleware"
 	"iuno-api/stripe"
-	stripehandlers "iuno-api/handlers/stripehandlers"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
 
 	if err := godotenv.Load(); err != nil {
-        log.Println(".env file not found")
-    }
+		log.Println(".env file not found")
+	}
 
 	// =====================================================
 	// INIT DATABASE
@@ -103,6 +104,17 @@ func main() {
 			middleware.AuthMiddleware(
 				handlers.AppleStoreKitTransactionHandler,
 			),
+		),
+	)
+
+	// =====================================================
+	// APPLE APP STORE SERVER NOTIFICATIONS V2
+	// =====================================================
+
+	http.HandleFunc(
+		"/api/apple/notifications",
+		middleware.CORSMiddleware(
+			handlers.AppleStoreServerNotificationsHandler,
 		),
 	)
 
