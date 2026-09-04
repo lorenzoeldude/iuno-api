@@ -463,12 +463,35 @@ func AppleStoreKitTransactionHandler(
 	// UPDATE USER PREMIUM
 	// =====================================================
 
+	activeAppleSubscription, err :=
+		storekit.HasActiveAppleSubscription(
+			r.Context(),
+			tx,
+			claims.UserID,
+		)
+
+	if err != nil {
+
+		log.Printf(
+			"Apple StoreKit: failed to determine active subscription: %v",
+			err,
+		)
+
+		http.Error(
+			w,
+			"failed to determine subscription status",
+			http.StatusInternalServerError,
+		)
+
+		return
+	}
+
 	if err :=
 		storekit.UpdateUserPremium(
 			r.Context(),
 			tx,
 			claims.UserID,
-			isPremium,
+			activeAppleSubscription,
 		); err != nil {
 
 		log.Printf(
@@ -488,7 +511,7 @@ func AppleStoreKitTransactionHandler(
 	log.Printf(
 		"Apple StoreKit: Premium status for user %d = %v",
 		claims.UserID,
-		isPremium,
+		activeAppleSubscription,
 	)
 
 	// =====================================================
@@ -536,7 +559,7 @@ func AppleStoreKitTransactionHandler(
 			"success":     true,
 			"user_id":     claims.UserID,
 			"product_id":  decodedPayload.ProductID,
-			"is_premium":  isPremium,
+			"is_premium":  activeAppleSubscription,
 			"environment": decodedPayload.Environment,
 		},
 	)
