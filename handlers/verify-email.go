@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	"iuno-api/db"
@@ -16,6 +17,7 @@ func VerifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	token := r.URL.Query().Get("token")
+	source := r.URL.Query().Get("source")
 
 	if token == "" {
 		http.Error(w, "missing token", http.StatusBadRequest)
@@ -43,6 +45,31 @@ func VerifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// iOS app response
+	if source == "app" {
+
+		w.Header().Set("Content-Type", "application/json")
+
+		if commandTag.RowsAffected() == 0 {
+			w.WriteHeader(http.StatusBadRequest)
+
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": "Invalid or expired verification link",
+			})
+
+			return
+		}
+
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": "Email verified successfully",
+		})
+
+		return
+	}
+
+	// Existing website behavior
 	if commandTag.RowsAffected() == 0 {
 		http.Redirect(
 			w,
