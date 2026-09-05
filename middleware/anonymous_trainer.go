@@ -19,6 +19,7 @@ type anonymousTrainerContextKey string
 const AnonymousTrainerIDKey = anonymousTrainerContextKey("anonymous_trainer_id")
 
 const AnonymousDailyLimit = 10
+const AuthenticatedDailyLimit = 30
 
 func AnonymousTrainerMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -46,11 +47,126 @@ func AnonymousTrainerMiddleware(next http.HandlerFunc) http.HandlerFunc {
 				},
 			)
 
-			// Valid authenticated user.
-			// They do NOT use the anonymous quota.
 			if err == nil &&
 				token != nil &&
 				token.Valid {
+
+				// =================================================
+				// CHECK PREMIUM STATUS
+				// =================================================
+
+				var isPremium bool
+
+				err = db.Pool.QueryRow(
+					context.Background(),
+					`
+					SELECT EXISTS (
+						SELECT 1
+						FROM subscriptions
+						WHERE user_id = $1
+						AND (
+							(
+								provider = 'apple'
+								AND (
+									current_period_end IS NULL
+									OR current_period_end > NOW()
+								)
+							)
+							OR
+							(
+								provider = 'stripe'
+								AND status IN ('active', 'trialing')
+								AND (
+									current_period_end IS NULL
+									OR current_period_end > NOW()
+								)
+							)
+						)
+					)
+					`,
+					claims.UserID,
+				).Scan(&isPremium)
+
+				if err != nil {
+					http.Error(
+						w,
+						"failed to check premium status",
+						http.StatusInternalServerError,
+					)
+					return
+				}
+
+				// =================================================
+				// PREMIUM USERS = UNLIMITED
+				// =================================================
+
+				if isPremium {
+
+					ctx := context.WithValue(
+						r.Context(),
+						UserContextKey,
+						claims,
+					)
+
+					next.ServeHTTP(
+						w,
+						r.WithContext(ctx),
+					)
+
+					return
+				}
+
+				// =================================================
+				// FREE LOGGED-IN USERS
+				// =================================================
+
+				today := time.Now().UTC().Format("2006-01-02")
+
+				var questionsAnswered int
+
+				err = db.Pool.QueryRow(
+					context.Background(),
+					`
+					SELECT questions_answered
+					FROM trainer_daily_usage
+					WHERE user_id = $1
+					AND usage_date = $2
+					`,
+					claims.UserID,
+					today,
+				).Scan(&questionsAnswered)
+
+				// No record yet = zero usage.
+				if err != nil {
+					questionsAnswered = 0
+				}
+
+				// =================================================
+				// DAILY LIMIT
+				// =================================================
+
+				if questionsAnswered >= AuthenticatedDailyLimit {
+
+					w.Header().Set(
+						"Content-Type",
+						"application/json",
+					)
+
+					w.WriteHeader(http.StatusTooManyRequests)
+
+					json.NewEncoder(w).Encode(map[string]interface{}{
+						"error":        "daily training limit reached",
+						"limit":        AuthenticatedDailyLimit,
+						"used":         questionsAnswered,
+						"limitReached": true,
+					})
+
+					return
+				}
+
+				// =================================================
+				// CONTINUE
+				// =================================================
 
 				ctx := context.WithValue(
 					r.Context(),
@@ -63,12 +179,39 @@ func AnonymousTrainerMiddleware(next http.HandlerFunc) http.HandlerFunc {
 					r.WithContext(ctx),
 				)
 
+				// =================================================
+				// RECORD QUESTION
+				// =================================================
+
+				_, err = db.Pool.Exec(
+					context.Background(),
+					`
+					INSERT INTO trainer_daily_usage (
+						user_id,
+						usage_date,
+						questions_answered
+					)
+					VALUES ($1, $2, 1)
+					ON CONFLICT (user_id, usage_date)
+					DO UPDATE SET
+						questions_answered =
+							trainer_daily_usage.questions_answered + 1
+					`,
+					claims.UserID,
+					today,
+				)
+
+				if err != nil {
+					// Question was already served.
+					// Don't break the response.
+				}
+
 				return
 			}
 		}
 
 		// =====================================================
-		// GET ANONYMOUS ID COOKIE
+		// ANONYMOUS USERS
 		// =====================================================
 
 		cookie, err := r.Cookie("anonymous_id")
@@ -154,9 +297,9 @@ func AnonymousTrainerMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			w.WriteHeader(http.StatusTooManyRequests)
 
 			json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":       "daily anonymous training limit reached",
-				"limit":       AnonymousDailyLimit,
-				"used":        questionsAnswered,
+				"error":        "daily anonymous training limit reached",
+				"limit":        AnonymousDailyLimit,
+				"used":         questionsAnswered,
 				"limitReached": true,
 			})
 
@@ -186,8 +329,6 @@ func AnonymousTrainerMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		// RECORD QUESTION
 		// =====================================================
 
-		// The request successfully reached the trainer handler,
-		// so count it as one anonymous training question.
 		_, err = db.Pool.Exec(
 			context.Background(),
 			`
@@ -207,9 +348,8 @@ func AnonymousTrainerMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		)
 
 		if err != nil {
-			// The question was already served, so don't break
-			// the response. Just log the database failure.
-			// You can add proper logging later.
+			// Question was already served.
+			// Don't break the response.
 		}
 	}
 }
