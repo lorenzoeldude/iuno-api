@@ -31,6 +31,7 @@ type AppleTransactionPayload struct {
 	OriginalTransactionID string `json:"originalTransactionId"`
 
 	ProductID string `json:"productId"`
+	BundleID  string `json:"bundleId"`
 
 	PurchaseDate int64 `json:"purchaseDate"`
 	ExpiresDate  int64 `json:"expiresDate"`

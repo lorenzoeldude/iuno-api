@@ -1,6 +1,7 @@
 package storekit
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"iuno-api/utils"
@@ -13,19 +14,9 @@ import (
 // This is the StoreKit entry point for validating a
 // signed transaction.
 //
-// IMPORTANT:
+// The JWS is cryptographically verified before its
+// payload is trusted.
 //
-// The current implementation decodes Apple's JWS payload
-// but does NOT cryptographically verify Apple's signature.
-//
-// That is sufficient for local/Xcode development while
-// building the StoreKit integration.
-//
-// Before accepting real Production purchases, this function
-// MUST perform Apple's JWS certificate-chain and signature
-// verification.
-//
-// =====================================================
 
 func VerifyTransaction(
 	signedTransaction string,
@@ -42,18 +33,58 @@ func VerifyTransaction(
 	}
 
 	// =====================================================
-	// DECODE APPLE JWS
+	// CRYPTOGRAPHICALLY VERIFY APPLE JWS
 	// =====================================================
 
-	payload, err :=
-		utils.DecodeAppleTransaction(
+	payloadBytes, err :=
+		VerifyAppleJWS(
 			signedTransaction,
 		)
 
 	if err != nil {
 		return nil, fmt.Errorf(
-			"failed to decode Apple transaction: %w",
+			"Apple JWS verification failed: %w",
 			err,
+		)
+	}
+
+	// =====================================================
+	// DECODE VERIFIED PAYLOAD
+	// =====================================================
+
+	var payload utils.AppleTransactionPayload
+
+	if err :=
+		json.Unmarshal(
+			payloadBytes,
+			&payload,
+		); err != nil {
+
+		return nil, fmt.Errorf(
+			"failed to parse verified Apple transaction payload: %w",
+			err,
+		)
+	}
+
+	// =====================================================
+	// VALIDATE REQUIRED FIELDS
+	// =====================================================
+
+	if payload.TransactionID == "" {
+		return nil, fmt.Errorf(
+			"transactionId missing",
+		)
+	}
+
+	if payload.OriginalTransactionID == "" {
+		return nil, fmt.Errorf(
+			"originalTransactionId missing",
+		)
+	}
+
+	if payload.ProductID == "" {
+		return nil, fmt.Errorf(
+			"productId missing",
 		)
 	}
 
@@ -98,28 +129,7 @@ func VerifyTransaction(
 	// CREATE TRANSACTION
 	// =====================================================
 
-	transaction := &Transaction{
-		Payload: payload,
-	}
-
-	// =====================================================
-	// TODO: CRYPTOGRAPHIC VERIFICATION
-	// =====================================================
-	//
-	// Before Production purchases are accepted, this is
-	// where we must verify:
-	//
-	// 1. JWS header
-	// 2. Apple's x5c certificate chain
-	// 3. Certificate validity
-	// 4. Certificate chain against Apple's root CA
-	// 5. JWS signature
-	// 6. Appropriate Apple signing certificate
-	//
-	// Do NOT simply trust the decoded payload for
-	// Production purchases.
-	//
-	// =====================================================
-
-	return transaction, nil
+	return &Transaction{
+		Payload: &payload,
+	}, nil
 }

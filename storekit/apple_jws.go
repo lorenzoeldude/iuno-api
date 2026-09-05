@@ -1,6 +1,6 @@
 //
-//  apple_jws.go
-//  iuno-api
+// apple_jws.go
+// iuno-api
 //
 
 package storekit
@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"os"
 	"strings"
@@ -37,10 +38,12 @@ type appleJWSHeader struct {
 // 4. Certificate validity
 // 5. JWS signature
 //
-// The Apple root certificate is trusted from our own
-// local certificate file, NOT from the incoming JWS.
+// The trusted Apple root certificate comes from our own
+// configured certificate file.
 //
-// =====================================================
+// The root certificate supplied by the JWS is NEVER trusted
+// merely because Apple supplied it.
+//
 
 func VerifyAppleJWS(
 	signedPayload string,
@@ -56,21 +59,39 @@ func VerifyAppleJWS(
 		)
 	}
 
-	parts :=
-		strings.Split(
-			signedPayload,
-			".",
-		)
+	parts := strings.Split(
+		signedPayload,
+		".",
+	)
 
 	if len(parts) != 3 {
 		return nil, fmt.Errorf(
-			"invalid JWS format",
+			"invalid JWS format: expected 3 parts, got %d",
+			len(parts),
 		)
 	}
 
 	headerPart := parts[0]
 	payloadPart := parts[1]
 	signaturePart := parts[2]
+
+	if headerPart == "" {
+		return nil, fmt.Errorf(
+			"JWS header is empty",
+		)
+	}
+
+	if payloadPart == "" {
+		return nil, fmt.Errorf(
+			"JWS payload is empty",
+		)
+	}
+
+	if signaturePart == "" {
+		return nil, fmt.Errorf(
+			"JWS signature is empty",
+		)
+	}
 
 	// =====================================================
 	// DECODE HEADER
@@ -103,7 +124,7 @@ func VerifyAppleJWS(
 	}
 
 	// =====================================================
-	// ALGORITHM
+	// VERIFY ALGORITHM
 	// =====================================================
 
 	if header.Alg != "ES256" {
@@ -116,10 +137,21 @@ func VerifyAppleJWS(
 	// =====================================================
 	// CERTIFICATE CHAIN
 	// =====================================================
+	//
+	// x5c is expected to contain Apple's certificate chain,
+	// with the leaf certificate first.
+	//
+	// We require at least:
+	//
+	//   leaf
+	//   intermediate
+	//
+	// The trusted root is loaded separately from disk.
+	//
 
-	if len(header.X5C) != 3 {
+	if len(header.X5C) < 2 {
 		return nil, fmt.Errorf(
-			"invalid Apple certificate chain: expected 3 certificates, got %d",
+			"invalid Apple certificate chain: expected at least 2 certificates, got %d",
 			len(header.X5C),
 		)
 	}
@@ -139,7 +171,7 @@ func VerifyAppleJWS(
 
 		if err != nil {
 			return nil, fmt.Errorf(
-				"failed to decode certificate %d: %w",
+				"failed to decode Apple certificate %d: %w",
 				i,
 				err,
 			)
@@ -152,7 +184,7 @@ func VerifyAppleJWS(
 
 		if err != nil {
 			return nil, fmt.Errorf(
-				"failed to parse certificate %d: %w",
+				"failed to parse Apple certificate %d: %w",
 				i,
 				err,
 			)
@@ -163,12 +195,6 @@ func VerifyAppleJWS(
 
 	leafCertificate :=
 		certificates[0]
-
-	intermediateCertificate :=
-		certificates[1]
-
-	rootCertificate :=
-		certificates[2]
 
 	// =====================================================
 	// LOAD TRUSTED APPLE ROOT
@@ -197,47 +223,52 @@ func VerifyAppleJWS(
 		)
 	}
 
+	// Support both:
+	//
+	//   DER certificate
+	//
+	// and:
+	//
+	//   PEM certificate
+	//
+
 	trustedRoot, err :=
-		x509.ParseCertificate(
+		parseAppleRootCertificate(
 			trustedRootBytes,
 		)
 
 	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to parse trusted Apple root certificate: %w",
-			err,
-		)
+		return nil, err
 	}
 
 	// =====================================================
-	// VERIFY ROOT MATCH
-	// =====================================================
-
-	if !rootCertificate.Equal(
-		trustedRoot,
-	) {
-		return nil, fmt.Errorf(
-			"Apple JWS root certificate is not trusted",
-		)
-	}
-
-	// =====================================================
-	// CERTIFICATE CHAIN
+	// BUILD TRUSTED ROOT POOL
 	// =====================================================
 
 	roots :=
 		x509.NewCertPool()
 
-	roots.AddCert(
-		trustedRoot,
-	)
+	roots.AddCert(trustedRoot)
+
+	// =====================================================
+	// BUILD INTERMEDIATE POOL
+	// =====================================================
 
 	intermediates :=
 		x509.NewCertPool()
 
-	intermediates.AddCert(
-		intermediateCertificate,
-	)
+	for i := 1; i < len(certificates); i++ {
+
+		// Never treat an incoming certificate as a trusted
+		// root. They are only intermediates.
+		intermediates.AddCert(
+			certificates[i],
+		)
+	}
+
+	// =====================================================
+	// VERIFY CERTIFICATE CHAIN
+	// =====================================================
 
 	_, err =
 		leafCertificate.Verify(
@@ -304,7 +335,7 @@ func VerifyAppleJWS(
 	}
 
 	// =====================================================
-	// DECODE PAYLOAD
+	// DECODE VERIFIED PAYLOAD
 	// =====================================================
 
 	payloadBytes, err :=
@@ -320,4 +351,74 @@ func VerifyAppleJWS(
 	}
 
 	return payloadBytes, nil
+}
+
+// =====================================================
+// PARSE APPLE ROOT CERTIFICATE
+// =====================================================
+//
+// Supports both DER and PEM encoded certificates.
+//
+
+func parseAppleRootCertificate(
+	certificateBytes []byte,
+) (*x509.Certificate, error) {
+
+	// Try DER first.
+	certificate, err :=
+		x509.ParseCertificate(
+			certificateBytes,
+		)
+
+	if err == nil {
+		return certificate, nil
+	}
+
+	// Try PEM.
+	block, _ :=
+		pemDecode(
+			certificateBytes,
+		)
+
+	if block == nil {
+		return nil, fmt.Errorf(
+			"failed to parse trusted Apple root certificate",
+		)
+	}
+
+	certificate, err =
+		x509.ParseCertificate(
+			block,
+		)
+
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to parse trusted Apple root certificate: %w",
+			err,
+		)
+	}
+
+	return certificate, nil
+}
+
+// =====================================================
+// PEM DECODE
+// =====================================================
+
+func pemDecode(
+	data []byte,
+) ([]byte, error) {
+
+	block, _ :=
+		pem.Decode(
+			data,
+		)
+
+	if block == nil {
+		return nil, fmt.Errorf(
+			"invalid PEM certificate",
+		)
+	}
+
+	return block.Bytes, nil
 }
