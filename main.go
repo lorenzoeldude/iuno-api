@@ -598,6 +598,15 @@ func main() {
 	)
 
 	http.HandleFunc(
+		"/api/auth/me",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				handlers.MeHandler,
+			),
+		),
+	)
+
+	http.HandleFunc(
 		"/api/auth/resend-verification",
 		handlers.ResendVerificationHandler,
 	)
