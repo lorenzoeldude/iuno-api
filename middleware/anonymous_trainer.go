@@ -60,30 +60,10 @@ func AnonymousTrainerMiddleware(next http.HandlerFunc) http.HandlerFunc {
 				err = db.Pool.QueryRow(
 					context.Background(),
 					`
-					SELECT EXISTS (
-						SELECT 1
-						FROM subscriptions
-						WHERE user_id = $1
-						AND (
-							(
-								provider = 'apple'
-								AND (
-									current_period_end IS NULL
-									OR current_period_end > NOW()
-								)
-							)
-							OR
-							(
-								provider = 'stripe'
-								AND status IN ('active', 'trialing')
-								AND (
-									current_period_end IS NULL
-									OR current_period_end > NOW()
-								)
-							)
-						)
-					)
-					`,
+    SELECT is_premium
+    FROM users
+    WHERE id = $1
+    `,
 					claims.UserID,
 				).Scan(&isPremium)
 
