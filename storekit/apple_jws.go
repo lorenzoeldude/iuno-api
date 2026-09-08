@@ -345,6 +345,12 @@ func verifyXcodeJWS(
 	// and configured on the server.
 	//
 
+	fmt.Printf(
+		"Apple StoreKit Xcode certificate fingerprints: JWS=%s TRUSTED=%s\n",
+		certificateFingerprint(signingCertificate),
+		certificateFingerprint(trustedCertificate),
+	)
+
 	if !signingCertificate.Equal(trustedCertificate) {
 		return nil, fmt.Errorf(
 			"Xcode StoreKit signing certificate does not match trusted StoreKit test certificate",
@@ -720,4 +726,16 @@ func parseAppleRootCertificate(
 	}
 
 	return certificate, nil
+}
+
+func certificateFingerprint(cert *x509.Certificate) string {
+	hash := sha256.Sum256(cert.Raw)
+
+	parts := make([]string, len(hash))
+
+	for i, b := range hash {
+		parts[i] = fmt.Sprintf("%02X", b)
+	}
+
+	return strings.Join(parts, ":")
 }
