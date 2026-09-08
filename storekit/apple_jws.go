@@ -28,6 +28,23 @@ type appleJWSHeader struct {
 }
 
 // =====================================================
+// JWS ENVIRONMENT
+// =====================================================
+//
+// We decode this before certificate verification so we can
+// select the correct trust model.
+//
+// Xcode StoreKit Testing uses a self-signed StoreKit test
+// certificate.
+//
+// Sandbox / Production use Apple's certificate chain.
+//
+
+type appleJWSEnvironment struct {
+	Environment string `json:"environment"`
+}
+
+// =====================================================
 // VERIFY APPLE JWS
 // =====================================================
 //
@@ -35,15 +52,21 @@ type appleJWSHeader struct {
 //
 // 1. JWS structure
 // 2. ES256 algorithm
-// 3. Apple certificate chain
+// 3. Correct certificate trust model
 // 4. Certificate validity
 // 5. JWS signature
 //
-// The trusted Apple root certificate comes from our own
-// configured certificate file.
+// Trust models:
 //
-// The root certificate supplied by the JWS is NEVER trusted
-// merely because Apple supplied it.
+// Xcode:
+//   StoreKitTestCertificate.cer
+//
+// Sandbox / Production:
+//   Apple root certificate + certificate chain
+//
+// IMPORTANT:
+// The certificate supplied by the JWS is NEVER trusted merely
+// because Apple/Xcode supplied it.
 //
 
 func VerifyAppleJWS(
@@ -136,19 +159,318 @@ func VerifyAppleJWS(
 	}
 
 	// =====================================================
-	// CERTIFICATE CHAIN
+	// DECODE PAYLOAD
 	// =====================================================
 	//
-	// x5c is expected to contain Apple's certificate chain,
-	// with the leaf certificate first.
+	// We need the environment before selecting the
+	// certificate trust model.
 	//
-	// We require at least:
+	// The environment itself is NOT trusted yet.
+	// It becomes trusted only after the JWS signature
+	// is successfully verified against the appropriate
+	// trusted certificate.
 	//
-	//   leaf
-	//   intermediate
+
+	payloadBytes, err :=
+		base64.RawURLEncoding.DecodeString(
+			payloadPart,
+		)
+
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to decode JWS payload: %w",
+			err,
+		)
+	}
+
+	var environmentPayload appleJWSEnvironment
+
+	if err :=
+		json.Unmarshal(
+			payloadBytes,
+			&environmentPayload,
+		); err != nil {
+
+		return nil, fmt.Errorf(
+			"failed to decode Apple JWS environment: %w",
+			err,
+		)
+	}
+
+	// =====================================================
+	// SELECT TRUST MODEL
+	// =====================================================
+
+	switch environmentPayload.Environment {
+
+	case "Xcode":
+
+		return verifyXcodeJWS(
+			header,
+			headerPart,
+			payloadPart,
+			signaturePart,
+			payloadBytes,
+		)
+
+	case "Sandbox", "Production":
+
+		return verifyAppleJWS(
+			header,
+			headerPart,
+			payloadPart,
+			signaturePart,
+			payloadBytes,
+		)
+
+	default:
+
+		return nil, fmt.Errorf(
+			"unknown Apple JWS environment: %s",
+			environmentPayload.Environment,
+		)
+	}
+}
+
+// =====================================================
+// VERIFY XCODE JWS
+// =====================================================
+//
+// Xcode StoreKit Testing uses a self-signed StoreKit
+// test certificate.
+//
+// The certificate exported from Xcode is a trusted root
+// for this local test environment.
+//
+// Apple's documentation confirms that the Xcode test
+// certificate is a root certificate and does not have
+// a certificate chain.
+//
+
+func verifyXcodeJWS(
+	header appleJWSHeader,
+	headerPart string,
+	payloadPart string,
+	signaturePart string,
+	payloadBytes []byte,
+) ([]byte, error) {
+
+	// =====================================================
+	// CERTIFICATE COUNT
+	// =====================================================
+
+	if len(header.X5C) != 1 {
+		return nil, fmt.Errorf(
+			"invalid Xcode StoreKit certificate chain: expected exactly 1 certificate, got %d",
+			len(header.X5C),
+		)
+	}
+
+	// =====================================================
+	// LOAD XCODE TEST CERTIFICATE
+	// =====================================================
+
+	certificatePath :=
+		os.Getenv(
+			"APPLE_STOREKIT_TEST_CERT_PATH",
+		)
+
+	if certificatePath == "" {
+		return nil, fmt.Errorf(
+			"APPLE_STOREKIT_TEST_CERT_PATH is not configured",
+		)
+	}
+
+	trustedCertificateBytes, err :=
+		os.ReadFile(
+			certificatePath,
+		)
+
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to read Xcode StoreKit test certificate: %w",
+			err,
+		)
+	}
+
+	trustedCertificate, err :=
+		parseAppleRootCertificate(
+			trustedCertificateBytes,
+		)
+
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to parse Xcode StoreKit test certificate: %w",
+			err,
+		)
+	}
+
+	// =====================================================
+	// DECODE JWS CERTIFICATE
+	// =====================================================
+
+	certificateBytes, err :=
+		base64.StdEncoding.DecodeString(
+			header.X5C[0],
+		)
+
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to decode Xcode StoreKit certificate: %w",
+			err,
+		)
+	}
+
+	signingCertificate, err :=
+		x509.ParseCertificate(
+			certificateBytes,
+		)
+
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to parse Xcode StoreKit certificate: %w",
+			err,
+		)
+	}
+
+	// =====================================================
+	// ENSURE THE JWS CERTIFICATE IS OUR TRUSTED
+	// XCODE CERTIFICATE
+	// =====================================================
 	//
-	// The trusted root is loaded separately from disk.
+	// Do NOT trust an arbitrary self-signed certificate.
 	//
+	// The certificate embedded in the JWS must be exactly
+	// the certificate we explicitly exported from Xcode
+	// and configured on the server.
+	//
+
+	if !signingCertificate.Equal(trustedCertificate) {
+		return nil, fmt.Errorf(
+			"Xcode StoreKit signing certificate does not match trusted StoreKit test certificate",
+		)
+	}
+
+	// =====================================================
+	// VERIFY CERTIFICATE VALIDITY
+	// =====================================================
+
+	if _, err :=
+		signingCertificate.Verify(
+			x509.VerifyOptions{
+				Roots: func() *x509.CertPool {
+					roots := x509.NewCertPool()
+					roots.AddCert(trustedCertificate)
+					return roots
+				}(),
+
+				KeyUsages: []x509.ExtKeyUsage{
+					x509.ExtKeyUsageAny,
+				},
+			},
+		); err != nil {
+
+		return nil, fmt.Errorf(
+			"Xcode StoreKit certificate verification failed: %w",
+			err,
+		)
+	}
+
+	// =====================================================
+	// VERIFY JWS SIGNATURE
+	// =====================================================
+
+	signature, err :=
+		base64.RawURLEncoding.DecodeString(
+			signaturePart,
+		)
+
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to decode Xcode JWS signature: %w",
+			err,
+		)
+	}
+
+	// ES256 uses:
+	//
+	// R = 32 bytes
+	// S = 32 bytes
+	//
+	// JWS uses the JOSE format:
+	//
+	// R || S
+	//
+
+	if len(signature) != 64 {
+		return nil, fmt.Errorf(
+			"invalid ES256 JWS signature length: expected 64 bytes, got %d",
+			len(signature),
+		)
+	}
+
+	signingInput :=
+		[]byte(
+			headerPart + "." + payloadPart,
+		)
+
+	hash :=
+		sha256.Sum256(
+			signingInput,
+		)
+
+	publicKey, ok :=
+		signingCertificate.PublicKey.(*ecdsa.PublicKey)
+
+	if !ok {
+		return nil, fmt.Errorf(
+			"Xcode StoreKit signing certificate does not contain an ECDSA public key",
+		)
+	}
+
+	r := new(big.Int).SetBytes(
+		signature[:32],
+	)
+
+	s := new(big.Int).SetBytes(
+		signature[32:],
+	)
+
+	if !ecdsa.Verify(
+		publicKey,
+		hash[:],
+		r,
+		s,
+	) {
+		return nil, fmt.Errorf(
+			"Xcode StoreKit JWS signature verification failed",
+		)
+	}
+
+	return payloadBytes, nil
+}
+
+// =====================================================
+// VERIFY APPLE JWS
+// =====================================================
+//
+// Sandbox / Production verification.
+//
+// This is your existing Apple certificate-chain
+// verification and remains separate from Xcode.
+//
+
+func verifyAppleJWS(
+	header appleJWSHeader,
+	headerPart string,
+	payloadPart string,
+	signaturePart string,
+	payloadBytes []byte,
+) ([]byte, error) {
+
+	// =====================================================
+	// CERTIFICATE CHAIN
+	// =====================================================
 
 	if len(header.X5C) < 2 {
 		return nil, fmt.Errorf(
@@ -224,15 +546,6 @@ func VerifyAppleJWS(
 		)
 	}
 
-	// Support both:
-	//
-	//   DER certificate
-	//
-	// and:
-	//
-	//   PEM certificate
-	//
-
 	trustedRoot, err :=
 		parseAppleRootCertificate(
 			trustedRootBytes,
@@ -249,7 +562,9 @@ func VerifyAppleJWS(
 	roots :=
 		x509.NewCertPool()
 
-	roots.AddCert(trustedRoot)
+	roots.AddCert(
+		trustedRoot,
+	)
 
 	// =====================================================
 	// BUILD INTERMEDIATE POOL
@@ -293,14 +608,6 @@ func VerifyAppleJWS(
 	// =====================================================
 	// VERIFY JWS SIGNATURE
 	// =====================================================
-	//
-	// JWS ES256 signatures use the JOSE format:
-	//
-	//   R (32 bytes) || S (32 bytes)
-	//
-	// This is different from ASN.1/DER encoded ECDSA
-	// signatures, which ecdsa.VerifyASN1 expects.
-	//
 
 	signature, err :=
 		base64.RawURLEncoding.DecodeString(
@@ -314,8 +621,11 @@ func VerifyAppleJWS(
 		)
 	}
 
-	// ES256 uses a 256-bit curve, so R and S are
-	// each exactly 32 bytes.
+	// ES256 uses the JOSE format:
+	//
+	// R (32 bytes) || S (32 bytes)
+	//
+
 	if len(signature) != 64 {
 		return nil, fmt.Errorf(
 			"invalid ES256 JWS signature length: expected 64 bytes, got %d",
@@ -342,10 +652,6 @@ func VerifyAppleJWS(
 		)
 	}
 
-	// Split the JOSE signature into:
-	//
-	//	R = first 32 bytes
-	//	S = last 32 bytes
 	r := new(big.Int).SetBytes(
 		signature[:32],
 	)
@@ -362,22 +668,6 @@ func VerifyAppleJWS(
 	) {
 		return nil, fmt.Errorf(
 			"Apple JWS signature verification failed",
-		)
-	}
-
-	// =====================================================
-	// DECODE VERIFIED PAYLOAD
-	// =====================================================
-
-	payloadBytes, err :=
-		base64.RawURLEncoding.DecodeString(
-			payloadPart,
-		)
-
-	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to decode JWS payload: %w",
-			err,
 		)
 	}
 
@@ -407,7 +697,7 @@ func parseAppleRootCertificate(
 
 	// Try PEM.
 	block, _ :=
-		pemDecode(
+		pem.Decode(
 			certificateBytes,
 		)
 
@@ -419,7 +709,7 @@ func parseAppleRootCertificate(
 
 	certificate, err =
 		x509.ParseCertificate(
-			block,
+			block.Bytes,
 		)
 
 	if err != nil {
@@ -430,26 +720,4 @@ func parseAppleRootCertificate(
 	}
 
 	return certificate, nil
-}
-
-// =====================================================
-// PEM DECODE
-// =====================================================
-
-func pemDecode(
-	data []byte,
-) ([]byte, error) {
-
-	block, _ :=
-		pem.Decode(
-			data,
-		)
-
-	if block == nil {
-		return nil, fmt.Errorf(
-			"invalid PEM certificate",
-		)
-	}
-
-	return block.Bytes, nil
 }
