@@ -42,7 +42,7 @@ func IsPremium(
 	}
 
 	if payload.ExpiresDate <= 0 {
-		return true
+		return false
 	}
 
 	expirationDate := time.UnixMilli(
