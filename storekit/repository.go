@@ -64,10 +64,7 @@ func HasActiveAppleSubscription(
 			FROM subscriptions
 			WHERE user_id = $1
 			  AND provider = 'apple'
-			  AND (
-				  current_period_end IS NULL
-				  OR current_period_end > now()
-			  )
+			  AND current_period_end > now()
 		)
 		`,
 		userID,

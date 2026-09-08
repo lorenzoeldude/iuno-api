@@ -6,10 +6,8 @@
 package storekit
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"strings"
 )
 
 // =====================================================
@@ -55,43 +53,15 @@ func VerifyServerNotification(
 	signedPayload string,
 ) (*AppleServerNotification, error) {
 
-	if signedPayload == "" {
-		return nil, fmt.Errorf(
-			"signed payload is empty",
-		)
-	}
-
-	parts :=
-		strings.Split(
-			signedPayload,
-			".",
-		)
-
-	if len(parts) != 3 {
-		return nil, fmt.Errorf(
-			"invalid JWS format",
-		)
-	}
-
-	// =====================================================
-	// DECODE PAYLOAD
-	// =====================================================
-
 	payloadBytes, err :=
-		base64.RawURLEncoding.DecodeString(
-			parts[1],
-		)
+		VerifyAppleJWS(signedPayload)
 
 	if err != nil {
 		return nil, fmt.Errorf(
-			"failed to decode JWS payload: %w",
+			"Apple server notification JWS verification failed: %w",
 			err,
 		)
 	}
-
-	// =====================================================
-	// DECODE JSON
-	// =====================================================
 
 	var notification AppleServerNotification
 
@@ -102,14 +72,10 @@ func VerifyServerNotification(
 		); err != nil {
 
 		return nil, fmt.Errorf(
-			"failed to decode notification payload: %w",
+			"failed to decode Apple server notification payload: %w",
 			err,
 		)
 	}
-
-	// =====================================================
-	// BASIC VALIDATION
-	// =====================================================
 
 	if notification.Version != "" &&
 		notification.Version != "2.0" {
@@ -121,9 +87,14 @@ func VerifyServerNotification(
 	}
 
 	if notification.NotificationType == "" {
-
 		return nil, fmt.Errorf(
 			"notification type is missing",
+		)
+	}
+
+	if notification.NotificationUUID == "" {
+		return nil, fmt.Errorf(
+			"notification UUID is missing",
 		)
 	}
 
