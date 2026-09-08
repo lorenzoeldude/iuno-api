@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"math/big"
 	"os"
 	"strings"
 )
@@ -292,6 +293,14 @@ func VerifyAppleJWS(
 	// =====================================================
 	// VERIFY JWS SIGNATURE
 	// =====================================================
+	//
+	// JWS ES256 signatures use the JOSE format:
+	//
+	//   R (32 bytes) || S (32 bytes)
+	//
+	// This is different from ASN.1/DER encoded ECDSA
+	// signatures, which ecdsa.VerifyASN1 expects.
+	//
 
 	signature, err :=
 		base64.RawURLEncoding.DecodeString(
@@ -302,6 +311,15 @@ func VerifyAppleJWS(
 		return nil, fmt.Errorf(
 			"failed to decode JWS signature: %w",
 			err,
+		)
+	}
+
+	// ES256 uses a 256-bit curve, so R and S are
+	// each exactly 32 bytes.
+	if len(signature) != 64 {
+		return nil, fmt.Errorf(
+			"invalid ES256 JWS signature length: expected 64 bytes, got %d",
+			len(signature),
 		)
 	}
 
@@ -324,10 +342,23 @@ func VerifyAppleJWS(
 		)
 	}
 
-	if !ecdsa.VerifyASN1(
+	// Split the JOSE signature into:
+	//
+	//	R = first 32 bytes
+	//	S = last 32 bytes
+	r := new(big.Int).SetBytes(
+		signature[:32],
+	)
+
+	s := new(big.Int).SetBytes(
+		signature[32:],
+	)
+
+	if !ecdsa.Verify(
 		publicKey,
 		hash[:],
-		signature,
+		r,
+		s,
 	) {
 		return nil, fmt.Errorf(
 			"Apple JWS signature verification failed",
