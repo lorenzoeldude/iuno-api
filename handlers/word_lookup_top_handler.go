@@ -8,10 +8,11 @@ import (
 )
 
 type TopWordLookup struct {
-	ID          int    `json:"id"`
-	Lemma       string `json:"lemma"`
-	Meaning     string `json:"meaning"`
-	LookupCount int    `json:"lookup_count"`
+	ID              int    `json:"id"`
+	Lemma           string `json:"lemma"`
+	LemmaNormalized string `json:"lemma_normalized"`
+	Meaning         string `json:"meaning"`
+	LookupCount     int    `json:"lookup_count"`
 }
 
 func TopWordLookupsHandler(w http.ResponseWriter, r *http.Request) {
@@ -31,6 +32,7 @@ func TopWordLookupsHandler(w http.ResponseWriter, r *http.Request) {
 		SELECT
 			l.id,
 			l.lemma,
+			l.lemma_normalized,
 			COALESCE(MIN(m.meaning), '') AS meaning,
 			COUNT(*)::int AS lookup_count
 		FROM word_lookup_daily w
@@ -72,6 +74,7 @@ func TopWordLookupsHandler(w http.ResponseWriter, r *http.Request) {
 		err := rows.Scan(
 			&result.ID,
 			&result.Lemma,
+			&result.LemmaNormalized,
 			&result.Meaning,
 			&result.LookupCount,
 		)
