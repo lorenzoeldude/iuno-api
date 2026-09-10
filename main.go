@@ -119,6 +119,19 @@ func main() {
 	)
 
 	// =====================================================
+	// WORD LOOKUPS
+	// =====================================================
+
+	http.HandleFunc(
+		"/api/word-lookups",
+		middleware.CORSMiddleware(
+			middleware.AnonymousLookupMiddleware(
+				handlers.RecordWordLookupHandler,
+			),
+		),
+	)
+
+	// =====================================================
 	// DICTIONARY
 	// =====================================================
 
