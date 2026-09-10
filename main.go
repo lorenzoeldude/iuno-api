@@ -123,6 +123,13 @@ func main() {
 	// =====================================================
 
 	http.HandleFunc(
+		"/api/word-lookups/top",
+		middleware.CORSMiddleware(
+			handlers.TopWordLookupsHandler,
+		),
+	)
+
+	http.HandleFunc(
 		"/api/word-lookups",
 		middleware.CORSMiddleware(
 			middleware.AnonymousLookupMiddleware(
