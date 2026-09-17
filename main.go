@@ -159,6 +159,19 @@ func main() {
 	)
 
 	// =====================================================
+	// DICTIONARY REPORTS
+	// =====================================================
+
+	http.HandleFunc(
+		"/api/dictionary-reports",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				handlers.ReportDictionaryIssueHandler,
+			),
+		),
+	)
+
+	// =====================================================
 	// WORD OF THE DAY
 	// =====================================================
 
