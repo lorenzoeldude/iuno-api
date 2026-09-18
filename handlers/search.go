@@ -17,11 +17,11 @@ type SearchResult struct {
 }
 
 type SearchFormResult struct {
-	Form            string  `json:"form"`
-	PartOfSpeech    string  `json:"part_of_speech"`
-	Lemma           string  `json:"lemma"`
-	Meanings         []string  `json:"meanings"`
-	LemmaNormalized string  `json:"lemma_normalized"`
+	Form            string   `json:"form"`
+	PartOfSpeech    string   `json:"part_of_speech"`
+	Lemma           string   `json:"lemma"`
+	Meanings        []string `json:"meanings"`
+	LemmaNormalized string   `json:"lemma_normalized"`
 
 	GrammaticalCase *string `json:"grammatical_case"`
 	Number          *string `json:"number"`
@@ -60,9 +60,22 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 		FROM lemmas l
 		LEFT JOIN meanings m
 			ON m.lemma_id = l.id
-		WHERE LOWER(l.lemma) LIKE $1
+		WHERE
+			LOWER(l.lemma) LIKE $1
+			OR EXISTS (
+				SELECT 1
+				FROM meanings m2
+				WHERE
+					m2.lemma_id = l.id
+					AND LOWER(m2.meaning) LIKE '%' || $1 || '%'
+			)
 		GROUP BY l.id
-		ORDER BY l.lemma ASC
+		ORDER BY
+			CASE
+				WHEN LOWER(l.lemma) LIKE $1 THEN 0
+				ELSE 1
+			END,
+			l.lemma ASC
 		LIMIT 10
 	`, query+"%")
 
@@ -119,7 +132,7 @@ func SearchFormHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query = morphology.NormalizeLatin(query)
+	normalizedQuery := morphology.NormalizeLatin(query)
 
 	// =====================================================
 	// DB QUERY
@@ -154,9 +167,18 @@ func SearchFormHandler(w http.ResponseWriter, r *http.Request) {
 		FROM forms f
 		JOIN lemmas l
 			ON l.id = f.lemma_id
-		WHERE LOWER(f.form_normalized) LIKE LOWER($1)
+		WHERE
+			LOWER(f.form_normalized) LIKE LOWER($1)
+			OR EXISTS (
+				SELECT 1
+				FROM meanings m2
+				WHERE
+					m2.lemma_id = l.id
+					AND LOWER(m2.meaning) LIKE '%' || LOWER($2) || '%'
+			)
 		GROUP BY
 			f.form,
+			f.form_normalized,
 			f.part_of_speech,
 			f.grammatical_case,
 			f.number,
@@ -168,9 +190,39 @@ func SearchFormHandler(w http.ResponseWriter, r *http.Request) {
 			l.id,
 			l.lemma,
 			l.lemma_normalized
-		ORDER BY f.form ASC
+		ORDER BY
+			CASE
+				WHEN EXISTS (
+					SELECT 1
+					FROM meanings m3
+					WHERE
+						m3.lemma_id = l.id
+						AND LOWER(TRIM(m3.meaning)) = LOWER($2)
+				) THEN 0
+
+				WHEN EXISTS (
+					SELECT 1
+					FROM meanings m3
+					WHERE
+						m3.lemma_id = l.id
+						AND LOWER(m3.meaning) LIKE LOWER($2) || '%'
+				) THEN 1
+
+				WHEN EXISTS (
+					SELECT 1
+					FROM meanings m3
+					WHERE
+						m3.lemma_id = l.id
+						AND LOWER(m3.meaning) LIKE '%' || LOWER($2) || '%'
+				) THEN 2
+
+				WHEN LOWER(f.form_normalized) LIKE LOWER($1) THEN 3
+
+				ELSE 4
+			END,
+			f.form ASC
 		LIMIT 5;
-	`, query+"%")
+	`, normalizedQuery+"%", query)
 
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
