@@ -15,18 +15,18 @@ func GenerateVerb(lemma models.Lemma) []models.Form {
 	if lemma.Conjugation == nil {
 		return []models.Form{}
 	}
-	
+
 	switch *lemma.Conjugation {
-		case 1:
-			return generateFirstConjugation(lemma)
-		case 2:
-			return generateSecondConjugation(lemma)
-		case 3:
-    		return generateThirdConjugation(lemma)
-		case 31:
-			return generateThirdIOConjugation(lemma)
-		case 4:
-			return generateFourthConjugation(lemma)
+	case 1:
+		return generateFirstConjugation(lemma)
+	case 2:
+		return generateSecondConjugation(lemma)
+	case 3:
+		return generateThirdConjugation(lemma)
+	case 31:
+		return generateThirdIOConjugation(lemma)
+	case 4:
+		return generateFourthConjugation(lemma)
 	}
 
 	return []models.Form{}
@@ -45,12 +45,14 @@ func generateConjugation(
 
 	var forms []models.Form
 
+	hasSupine := lemma.Supine != nil && *lemma.Supine != ""
+
 	// STEMS
 	presentStem := removeVerbEnding(*lemma.Infinitive, infinitiveEnding)
 	perfectStem := removeVerbEnding(*lemma.Perfect, "ī")
 	var ppp string
 
-	if lemma.Supine != nil {
+	if hasSupine {
 		ppp = pppStem(*lemma.Supine)
 	}
 
@@ -87,7 +89,7 @@ func generateConjugation(
 		)...,
 	)
 
-	if lemma.Supine != nil {
+	if hasSupine {
 
 		forms = append(
 			forms,
@@ -139,7 +141,7 @@ func generateConjugation(
 	}
 
 	// PERFECT PASSIVE FORMS
-	if lemma.Supine != nil {
+	if hasSupine {
 
 		for _, pattern := range ppPatterns {
 
@@ -228,10 +230,10 @@ func generateThirdIOConjugation(lemma models.Lemma) []models.Form {
 func generateFourthConjugation(lemma models.Lemma) []models.Form {
 	return generateConjugation(
 		lemma,
-		"īre",   // infinitive ending
-		"īrī",   // passive infinitive
-		"iend",  // gerund suffix
-		"iēns",  // present active participle
+		"īre",  // infinitive ending
+		"īrī",  // passive infinitive
+		"iend", // gerund suffix
+		"iēns", // present active participle
 		FourthConjugationPatterns,
 		FourthConjugationPerfectPassivePatterns,
 		FourthConjugationImperatives,
