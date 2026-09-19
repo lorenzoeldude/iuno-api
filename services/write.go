@@ -77,7 +77,9 @@ func WriteWord(body models.WriteRequest) error {
 				neuter = $13,
 				pronoun_type = $14,
 				is_proper = $15,
-				comparable = $16
+				comparable = $16,
+				comparative = $17,
+				superlative = $18
 			WHERE id = $1
 		`,
 			lemma.ID,
@@ -96,6 +98,8 @@ func WriteWord(body models.WriteRequest) error {
 			nullString(lemma.PronounType),
 			lemma.IsProper,
 			nullBool(lemma.Comparable),
+			nullString(lemma.Comparative),
+			nullString(lemma.Superlative),
 		)
 
 		if err != nil {
@@ -122,10 +126,13 @@ func WriteWord(body models.WriteRequest) error {
 				neuter,
 				pronoun_type,
 				is_proper,
-				comparable
+				comparable,
+				comparative,
+				superlative
 			)
 			VALUES (
-				$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16
+				$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+				$11,$12,$13,$14,$15,$16,$17,$18
 			)
 			RETURNING id
 		`,
@@ -145,6 +152,8 @@ func WriteWord(body models.WriteRequest) error {
 			nullString(lemma.PronounType),
 			lemma.IsProper,
 			nullBool(lemma.Comparable),
+			nullString(lemma.Comparative),
+			nullString(lemma.Superlative),
 		).Scan(&lemma.ID)
 
 		if err != nil {
@@ -194,10 +203,10 @@ func WriteWord(body models.WriteRequest) error {
 
 		forms = []models.Form{
 			{
-				LemmaID:       lemma.ID,
-				Form:          lemma.Lemma,
+				LemmaID:        lemma.ID,
+				Form:           lemma.Lemma,
 				FormNormalized: morphology.NormalizeLatin(lemma.Lemma),
-				PartOfSpeech:  lemma.PartOfSpeech,
+				PartOfSpeech:   lemma.PartOfSpeech,
 			},
 		}
 

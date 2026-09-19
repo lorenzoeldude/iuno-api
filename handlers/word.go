@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
-	"log"
 
 	"iuno-api/models"
 	"iuno-api/services"
@@ -50,7 +50,6 @@ func WriteWordHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
-	log.Println("pronounType handler: ", body.Lemma.PronounType)
 
 	if body.Lemma.Lemma == "" {
 		http.Error(w, "lemma is required", http.StatusBadRequest)
