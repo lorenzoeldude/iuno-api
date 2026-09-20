@@ -8,7 +8,6 @@ import (
 	"iuno-api/models"
 )
 
-
 // =====================================================
 // GET WORD BY NORMALIZED LEMMA
 // =====================================================
@@ -34,6 +33,7 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 			infinitive,
 			feminine,
 			neuter,
+			comparable,
 			irregular,
 			is_proper
 		FROM lemmas
@@ -52,6 +52,7 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 		&lemma.Infinitive,
 		&lemma.Feminine,
 		&lemma.Neuter,
+		&lemma.Comparable,
 		&lemma.Irregular,
 		&lemma.IsProper,
 	)
@@ -60,11 +61,8 @@ func GetWord(lemma_normalized string) (models.DictionaryResponse, error) {
 		return models.DictionaryResponse{}, err
 	}
 
-
 	return getWordData(lemma)
 }
-
-
 
 // =====================================================
 // GET WORD BY ID (ADMIN EDITOR)
@@ -115,18 +113,14 @@ func GetWordByID(id int) (models.DictionaryResponse, error) {
 		return models.DictionaryResponse{}, err
 	}
 
-
 	return getWordData(lemma)
 }
-
-
 
 // =====================================================
 // COMMON DATA LOADING
 // =====================================================
 
 func getWordData(lemma models.Lemma) (models.DictionaryResponse, error) {
-
 
 	// ================= FORMS =================
 
@@ -155,7 +149,6 @@ func getWordData(lemma models.Lemma) (models.DictionaryResponse, error) {
 	}
 
 	defer formRows.Close()
-
 
 	var forms []models.Form
 
@@ -188,8 +181,6 @@ func getWordData(lemma models.Lemma) (models.DictionaryResponse, error) {
 		forms = append(forms, form)
 	}
 
-
-
 	// ================= EXAMPLES =================
 
 	exampleRows, err := db.Pool.Query(context.Background(), `
@@ -204,7 +195,6 @@ func getWordData(lemma models.Lemma) (models.DictionaryResponse, error) {
 	}
 
 	defer exampleRows.Close()
-
 
 	var examples []models.Example
 
@@ -224,8 +214,6 @@ func getWordData(lemma models.Lemma) (models.DictionaryResponse, error) {
 		examples = append(examples, ex)
 	}
 
-
-
 	// ================= MEANINGS =================
 
 	meaningRows, err := db.Pool.Query(context.Background(), `
@@ -240,7 +228,6 @@ func getWordData(lemma models.Lemma) (models.DictionaryResponse, error) {
 	}
 
 	defer meaningRows.Close()
-
 
 	var meanings []models.Meaning
 
@@ -261,8 +248,6 @@ func getWordData(lemma models.Lemma) (models.DictionaryResponse, error) {
 		meanings = append(meanings, m)
 	}
 
-
-
 	// ================= DEFINITIONS =================
 
 	definitionRows, err := db.Pool.Query(context.Background(), `
@@ -277,7 +262,6 @@ func getWordData(lemma models.Lemma) (models.DictionaryResponse, error) {
 	}
 
 	defer definitionRows.Close()
-
 
 	var definitions []models.Definition
 
@@ -297,8 +281,6 @@ func getWordData(lemma models.Lemma) (models.DictionaryResponse, error) {
 		definitions = append(definitions, d)
 	}
 
-
-
 	// ================= DERIVATIVES =================
 
 	derivativeRows, err := db.Pool.Query(context.Background(), `
@@ -313,7 +295,6 @@ func getWordData(lemma models.Lemma) (models.DictionaryResponse, error) {
 	}
 
 	defer derivativeRows.Close()
-
 
 	var derivatives []models.Derivative
 
@@ -332,8 +313,6 @@ func getWordData(lemma models.Lemma) (models.DictionaryResponse, error) {
 
 		derivatives = append(derivatives, d)
 	}
-
-
 
 	return models.DictionaryResponse{
 		Lemma:       lemma,
