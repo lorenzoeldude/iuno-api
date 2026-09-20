@@ -87,6 +87,7 @@ func GetWordByID(id int) (models.DictionaryResponse, error) {
 			infinitive,
 			feminine,
 			neuter,
+			comparable,
 			irregular,
 			is_proper
 		FROM lemmas
@@ -105,6 +106,7 @@ func GetWordByID(id int) (models.DictionaryResponse, error) {
 		&lemma.Infinitive,
 		&lemma.Feminine,
 		&lemma.Neuter,
+		&lemma.Comparable,
 		&lemma.Irregular,
 		&lemma.IsProper,
 	)
