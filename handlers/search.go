@@ -33,90 +33,6 @@ type SearchFormResult struct {
 	Person *int    `json:"person"`
 }
 
-func SearchHandler(w http.ResponseWriter, r *http.Request) {
-
-	// =====================================================
-	// GET QUERY
-	// =====================================================
-
-	query := r.URL.Query().Get("q")
-	query = strings.TrimSpace(strings.ToLower(query))
-
-	if query == "" {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode([]SearchResult{})
-		return
-	}
-
-	// =====================================================
-	// DB QUERY
-	// =====================================================
-
-	rows, err := db.Pool.Query(r.Context(), `
-		SELECT
-			l.lemma,
-			COALESCE(MIN(m.meaning), '') AS meaning,
-			l.slug
-		FROM lemmas l
-		LEFT JOIN meanings m
-			ON m.lemma_id = l.id
-		WHERE
-			LOWER(l.lemma) LIKE $1
-			OR EXISTS (
-				SELECT 1
-				FROM meanings m2
-				WHERE
-					m2.lemma_id = l.id
-					AND LOWER(m2.meaning) LIKE '%' || $1 || '%'
-			)
-		GROUP BY l.id
-		ORDER BY
-			CASE
-				WHEN LOWER(l.lemma) LIKE $1 THEN 0
-				ELSE 1
-			END,
-			l.lemma ASC
-		LIMIT 10
-	`, query+"%")
-
-	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
-		log.Println("error searching lemma:", err)
-		return
-	}
-	defer rows.Close()
-
-	// =====================================================
-	// BUILD RESULTS
-	// =====================================================
-
-	results := []SearchResult{}
-
-	for rows.Next() {
-
-		var res SearchResult
-
-		err := rows.Scan(
-			&res.Lemma,
-			&res.Meaning,
-			&res.Slug,
-		)
-
-		if err != nil {
-			continue
-		}
-
-		results = append(results, res)
-	}
-
-	// =====================================================
-	// RESPONSE
-	// =====================================================
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(results)
-}
-
 func SearchFormHandler(w http.ResponseWriter, r *http.Request) {
 
 	// =====================================================
@@ -168,7 +84,8 @@ func SearchFormHandler(w http.ResponseWriter, r *http.Request) {
 		JOIN lemmas l
 			ON l.id = f.lemma_id
 		WHERE
-			LOWER(f.form_normalized) LIKE LOWER($1)
+			LOWER(l.lemma_normalized) LIKE LOWER($1)
+			OR LOWER(f.form_normalized) LIKE LOWER($1)
 			OR EXISTS (
 				SELECT 1
 				FROM meanings m2
@@ -192,37 +109,47 @@ func SearchFormHandler(w http.ResponseWriter, r *http.Request) {
 			l.lemma_normalized
 		ORDER BY
 			CASE
+				-- 1. Exact lemma match
+				WHEN LOWER(l.lemma_normalized) = LOWER($1) THEN 0
+
+				-- 2. Lemma starts with query
+				WHEN LOWER(l.lemma_normalized) LIKE LOWER($1) || '%' THEN 1
+
+				-- 3. Exact meaning match
 				WHEN EXISTS (
 					SELECT 1
 					FROM meanings m3
 					WHERE
 						m3.lemma_id = l.id
 						AND LOWER(TRIM(m3.meaning)) = LOWER($2)
-				) THEN 0
+				) THEN 2
 
+				-- 4. Meaning starts with query
 				WHEN EXISTS (
 					SELECT 1
 					FROM meanings m3
 					WHERE
 						m3.lemma_id = l.id
 						AND LOWER(m3.meaning) LIKE LOWER($2) || '%'
-				) THEN 1
+				) THEN 3
 
+				-- 5. Form starts with query
+				WHEN LOWER(f.form_normalized) LIKE LOWER($1) || '%' THEN 4
+
+				-- 6. Meaning contains query
 				WHEN EXISTS (
 					SELECT 1
 					FROM meanings m3
 					WHERE
 						m3.lemma_id = l.id
 						AND LOWER(m3.meaning) LIKE '%' || LOWER($2) || '%'
-				) THEN 2
+				) THEN 5
 
-				WHEN LOWER(f.form_normalized) LIKE LOWER($1) THEN 3
-
-				ELSE 4
+				ELSE 6
 			END,
 			f.form ASC
 		LIMIT 5;
-	`, normalizedQuery+"%", query)
+	`, normalizedQuery, query)
 
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
