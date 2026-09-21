@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"iuno-api/db"
 )
@@ -14,40 +15,22 @@ import (
 // =====================================================
 
 type AdminDictionaryReport struct {
-	ID        int    `json:"id"`
-	UserID    int    `json:"userId"`
-	Username  string `json:"username"`
-	LemmaID   int    `json:"lemmaId"`
-	Lemma     string `json:"lemma"`
-	Message   string `json:"message"`
-	Platform  string `json:"platform"`
-	Status    string `json:"status"`
-	CreatedAt string `json:"createdAt"`
+	ID        int       `json:"id"`
+	UserID    int       `json:"userId"`
+	Username  string    `json:"username"`
+	LemmaID   int       `json:"lemmaId"`
+	Lemma     string    `json:"lemma"`
+	Message   string    `json:"message"`
+	Platform  string    `json:"platform"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
-func GetDictionaryReportsHandler(
-	w http.ResponseWriter,
-	r *http.Request,
-) {
-
-	// =====================================================
-	// METHOD CHECK
-	// =====================================================
-
+func GetDictionaryReportsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-
-		http.Error(
-			w,
-			"method not allowed",
-			http.StatusMethodNotAllowed,
-		)
-
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
-	// =====================================================
-	// QUERY
-	// =====================================================
 
 	rows, err := db.Pool.Query(
 		r.Context(),
@@ -72,18 +55,12 @@ func GetDictionaryReportsHandler(
 	)
 
 	if err != nil {
-
-		log.Println(
-			"GET DICTIONARY REPORTS ERROR:",
-			err,
-		)
-
+		log.Println("GET DICTIONARY REPORTS ERROR:", err)
 		http.Error(
 			w,
 			"failed to fetch dictionary reports",
 			http.StatusInternalServerError,
 		)
-
 		return
 	}
 
@@ -92,7 +69,6 @@ func GetDictionaryReportsHandler(
 	reports := make([]AdminDictionaryReport, 0)
 
 	for rows.Next() {
-
 		var report AdminDictionaryReport
 
 		err := rows.Scan(
@@ -108,7 +84,6 @@ func GetDictionaryReportsHandler(
 		)
 
 		if err != nil {
-
 			log.Println(
 				"GET DICTIONARY REPORTS SCAN ERROR:",
 				err,
@@ -119,18 +94,13 @@ func GetDictionaryReportsHandler(
 				"failed to read dictionary reports",
 				http.StatusInternalServerError,
 			)
-
 			return
 		}
 
-		reports = append(
-			reports,
-			report,
-		)
+		reports = append(reports, report)
 	}
 
 	if err := rows.Err(); err != nil {
-
 		log.Println(
 			"GET DICTIONARY REPORTS ROW ERROR:",
 			err,
@@ -141,13 +111,8 @@ func GetDictionaryReportsHandler(
 			"failed to read dictionary reports",
 			http.StatusInternalServerError,
 		)
-
 		return
 	}
-
-	// =====================================================
-	// RESPONSE
-	// =====================================================
 
 	w.Header().Set(
 		"Content-Type",
