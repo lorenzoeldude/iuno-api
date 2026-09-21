@@ -171,6 +171,17 @@ func main() {
 		),
 	)
 
+	http.HandleFunc(
+		"/api/admin/dictionary-reports",
+		middleware.CORSMiddleware(
+			middleware.AuthMiddleware(
+				middleware.AdminOnly(
+					handlers.GetDictionaryReportsHandler,
+				),
+			),
+		),
+	)
+
 	// =====================================================
 	// WORD OF THE DAY
 	// =====================================================
