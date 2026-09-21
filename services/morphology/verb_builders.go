@@ -36,17 +36,17 @@ func buildInfinitives(
 }
 
 func infinitiveForm(
-    form string,
-    tense string,
-    voice string,
+	form string,
+	tense string,
+	voice string,
 ) models.Form {
-    return models.Form{
-        Form: form,
-        PartOfSpeech: "verb",
-        Tense: StringPtr(tense),
-        Mood: StringPtr("infinitive"),
-        Voice: StringPtr(voice),
-    }
+	return models.Form{
+		Form:         form,
+		PartOfSpeech: "verb",
+		Tense:        StringPtr(tense),
+		Mood:         StringPtr("infinitive"),
+		Voice:        StringPtr(voice),
+	}
 }
 
 // GERUND (REUSABLE)
@@ -54,37 +54,37 @@ func buildGerundForms(gerundStem string) []models.Form {
 
 	return []models.Form{
 		{
-			Form:         gerundStem + "ī",
-			PartOfSpeech: "verb",
+			Form:            gerundStem + "ī",
+			PartOfSpeech:    "verb",
 			GrammaticalCase: StringPtr("genitive"),
-			Number:       "singular",
-			Mood:         StringPtr("gerund"),
+			Number:          "singular",
+			Mood:            StringPtr("gerund"),
 		},
 		{
-			Form:         gerundStem + "ō",
-			PartOfSpeech: "verb",
+			Form:            gerundStem + "ō",
+			PartOfSpeech:    "verb",
 			GrammaticalCase: StringPtr("dative"),
-			Number:       "singular",
-			Mood:         StringPtr("gerund"),
+			Number:          "singular",
+			Mood:            StringPtr("gerund"),
 		},
 		{
-			Form:         gerundStem + "um",
-			PartOfSpeech: "verb",
+			Form:            gerundStem + "um",
+			PartOfSpeech:    "verb",
 			GrammaticalCase: StringPtr("accusative"),
-			Number:       "singular",
-			Mood:         StringPtr("gerund"),
+			Number:          "singular",
+			Mood:            StringPtr("gerund"),
 		},
 		{
-			Form:         gerundStem + "ō",
-			PartOfSpeech: "verb",
+			Form:            gerundStem + "ō",
+			PartOfSpeech:    "verb",
 			GrammaticalCase: StringPtr("ablative"),
-			Number:       "singular",
-			Mood:         StringPtr("gerund"),
+			Number:          "singular",
+			Mood:            StringPtr("gerund"),
 		},
 	}
 }
 
-// 	GERUNDIVE (REUSABLE)
+// GERUNDIVE (REUSABLE)
 func buildGerundiveForms(lemma models.Lemma, gerundiveStem string) []models.Form {
 	var gerundiveForms []models.Form
 
@@ -115,50 +115,49 @@ func buildGerundiveForms(lemma models.Lemma, gerundiveStem string) []models.Form
 
 // PARTICIPLES
 func markAsParticiple(
-    forms []models.Form,
-    tense string,
-    voice string,
+	forms []models.Form,
+	tense string,
+	voice string,
 ) {
-    for i := range forms {
-        forms[i].PartOfSpeech = "verb"
-        forms[i].Mood = StringPtr("participle")
-        forms[i].Tense = StringPtr(tense)
-        forms[i].Voice = StringPtr(voice)
-    }
+	for i := range forms {
+		forms[i].PartOfSpeech = "verb"
+		forms[i].Mood = StringPtr("participle")
+		forms[i].Tense = StringPtr(tense)
+		forms[i].Voice = StringPtr(voice)
+	}
 }
 
 // PAP (REUSABLE)
 func generatePresentActiveParticiple(
 	presentStem string,
-    papEnding string,
+	papEnding string,
 ) []models.Form {
 
-    var forms []models.Form
+	var forms []models.Form
 
 	nominativeForm := presentStem + papEnding
 
 	papStem := strings.TrimSuffix(NormalizeLatin(nominativeForm), "s")
 
+	endings := map[string]map[string]string{
+		"singular": {
+			"genitive":   "tis",
+			"dative":     "tī",
+			"accusative": "tem", // m/f only
+			"ablative":   "te",  // participles usually use -e
+		},
 
-    endings := map[string]map[string]string{
-        "singular": {
-            "genitive":   "tis",
-            "dative":     "tī",
-            "accusative": "tem", // m/f only
-            "ablative":   "te",  // participles usually use -e
-        },
+		"plural": {
+			"nominative": "tēs", // m/f only
+			"genitive":   "tium",
+			"dative":     "tibus",
+			"accusative": "tēs", // m/f only
+			"ablative":   "tibus",
+			"vocative":   "tēs", // m/f only
+		},
+	}
 
-        "plural": {
-            "nominative": "tēs", // m/f only
-            "genitive":   "tium",
-            "dative":     "tibus",
-            "accusative": "tēs", // m/f only
-            "ablative":   "tibus",
-            "vocative":   "tēs", // m/f only
-        },
-    }
-
-    papLemma := models.Lemma{
+	papLemma := models.Lemma{
 		Declension: IntPtr(31),
 		Lemma:      nominativeForm,
 		Neuter:     StringPtr(papStem + "s"),
@@ -180,20 +179,20 @@ func generatePresentActiveParticiple(
 		)
 	}
 
-    markAsParticiple(
-        forms,
-        "present",
-        "active",
-    )
+	markAsParticiple(
+		forms,
+		"present",
+		"active",
+	)
 
-    return forms
+	return forms
 }
 
 // PPP (REUSABLE)
 func generatePerfectPassiveParticiple(lemma models.Lemma, ppp string) []models.Form {
-	
+
 	var pppForms []models.Form
-	
+
 	pppForms = append(
 		pppForms,
 		buildMasculineAdjectiveForms(ppp+"us", ppp)...,
@@ -209,7 +208,7 @@ func generatePerfectPassiveParticiple(lemma models.Lemma, ppp string) []models.F
 		buildNeuterAdjectiveForms(lemma, ppp)...,
 	)
 
-	markAsParticiple(pppForms, "perfect", "passive",)
+	markAsParticiple(pppForms, "perfect", "passive")
 
 	return pppForms
 }
@@ -245,21 +244,21 @@ func generateFutureActiveParticiple(lemma models.Lemma, ppp string) []models.For
 }
 
 func imperativeForm(
-    form string,
-    person int,
-    number string,
-    tense string,
-    voice string,
+	form string,
+	person int,
+	number string,
+	tense string,
+	voice string,
 ) models.Form {
-    return models.Form{
-        Form:         form,
-        PartOfSpeech: "verb",
-        Person:       IntPtr(person),
-        Number:       number,
-        Tense:        StringPtr(tense),
-        Mood:         StringPtr("imperative"),
-        Voice:        StringPtr(voice),
-    }
+	return models.Form{
+		Form:         form,
+		PartOfSpeech: "verb",
+		Person:       IntPtr(person),
+		Number:       number,
+		Tense:        StringPtr(tense),
+		Mood:         StringPtr("imperative"),
+		Voice:        StringPtr(voice),
+	}
 }
 
 // BUILD FINITE VERB FORMS
@@ -363,4 +362,20 @@ func buildPerfectPassiveForms(
 	}
 
 	return forms
+}
+
+// SUPINE
+func buildSupineForms(supine string) []models.Form {
+
+	ablativeForm := strings.TrimSuffix(supine, "um") + "ū"
+
+	return []models.Form{
+		{
+			Form:            ablativeForm,
+			PartOfSpeech:    "verb",
+			GrammaticalCase: StringPtr("ablative"),
+			Number:          "singular",
+			Mood:            StringPtr("supine"),
+		},
+	}
 }

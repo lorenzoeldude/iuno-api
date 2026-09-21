@@ -100,6 +100,12 @@ func generateConjugation(
 			forms,
 			generateFutureActiveParticiple(lemma, ppp)...,
 		)
+
+		// ABLATIVE SUPINE
+		forms = append(forms,
+			buildSupineForms(*lemma.Supine)...,
+		)
+
 	}
 
 	// FINITE FORMS
