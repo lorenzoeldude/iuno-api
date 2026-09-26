@@ -55,7 +55,11 @@ type GrammarBlock struct {
 
 	// Quiz blocks
 	SentenceBefore string `json:"sentenceBefore,omitempty"`
-	Ending          string `json:"ending,omitempty"`
+	Ending         string `json:"ending,omitempty"`
+
+	// Table
+	Columns []string   `json:"columns,omitempty"`
+	Rows    [][]string `json:"rows,omitempty"`
 }
 
 type GrammarDiagramWord struct {
