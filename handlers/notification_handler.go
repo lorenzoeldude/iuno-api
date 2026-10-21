@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -102,6 +103,9 @@ func nextDailyNotification(timezone string, now time.Time) (time.Time, error) {
 }
 
 func RegisterDeviceNotificationHandler(w http.ResponseWriter, r *http.Request) {
+
+	log.Println("NOTIFICATIONS: register handler reached")
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -155,9 +159,12 @@ func RegisterDeviceNotificationHandler(w http.ResponseWriter, r *http.Request) {
 		nextNotificationAt,
 	)
 	if err != nil {
+		log.Printf("NOTIFICATIONS: database insert failed: %v", err)
 		http.Error(w, "failed to register device", http.StatusInternalServerError)
 		return
 	}
+
+	log.Println("NOTIFICATIONS: device registered successfully")
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
