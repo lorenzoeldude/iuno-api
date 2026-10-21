@@ -1,16 +1,19 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"iuno-api/db"
 	"iuno-api/email"
 	"iuno-api/handlers"
 	stripehandlers "iuno-api/handlers/stripehandlers"
 	"iuno-api/middleware"
+	"iuno-api/services/notifications"
 	"iuno-api/stripe"
 
 	"github.com/joho/godotenv"
@@ -43,6 +46,8 @@ func main() {
 
 	db.Init(dbURL)
 	stripe.Init()
+
+	startNotificationScheduler()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("GLOBAL HIT:", r.URL.Path)
@@ -847,4 +852,27 @@ func main() {
 			nil,
 		),
 	)
+}
+
+func startNotificationScheduler() {
+	go func() {
+		run := func() {
+			if err := notifications.Run(context.Background()); err != nil {
+				log.Printf(
+					"Word of the Day notification job failed: %v",
+					err,
+				)
+			}
+		}
+
+		// Process any notifications that are already due.
+		run()
+
+		ticker := time.NewTicker(time.Hour)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			run()
+		}
+	}()
 }
