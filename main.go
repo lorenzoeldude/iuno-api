@@ -193,6 +193,24 @@ func main() {
 		),
 	)
 
+	http.HandleFunc(
+		"/api/notifications/register",
+		middleware.CORSMiddleware(
+			middleware.OptionalAuthMiddleware(
+				handlers.RegisterDeviceNotificationHandler,
+			),
+		),
+	)
+
+	http.HandleFunc(
+		"/api/notifications/preferences",
+		middleware.CORSMiddleware(
+			middleware.OptionalAuthMiddleware(
+				handlers.UpdateNotificationPreferencesHandler,
+			),
+		),
+	)
+
 	// =====================================================
 	// TEXTS
 	// =====================================================
