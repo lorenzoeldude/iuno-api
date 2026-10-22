@@ -137,7 +137,7 @@ func generatePresentActiveParticiple(
 
 	nominativeForm := presentStem + papEnding
 
-	papStem := strings.TrimSuffix(nominativeForm, "ns") + "nt"
+	papStem := strings.TrimSuffix(NormalizeLatin(nominativeForm), "s")
 
 	endings := map[string]map[string]string{
 		"singular": {
